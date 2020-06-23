@@ -38,7 +38,7 @@ which use octal numbers, grouping the 12 bits as 4 groups of 3.
 The user-visible registers of a PDP-8/X are very few by modern standards:
 
  * The AC or accumulator register is 32 bits wide, and is used
-   by almost all instructions.  Its contents 
+   by almost all instructions.
         
  * The MQ or multiplier-quotient register is also 32 bits wide.
    The PDP-8/X does not have multiply or divide operations, so
