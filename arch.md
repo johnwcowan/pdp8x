@@ -19,7 +19,7 @@ as clearly as possible what a PDP-8/X CPU actually appears to do.
 (Of course the implementation may be quite different, provided the
 registers and memory locations are the same.)
 
-The 32-bit words can be seen as
+The 32-bit words can be interpreted as
 either a vector of 32 bits from the most significant bit
 to the least significant bit, or a signed integer value
 between -2,147,483,648 and 2,147,483,647 inclusive.
@@ -83,7 +83,12 @@ called the *current page*.
    
 The minimum amount of memory for a PDP-8/X is 16 pages or 32 KW.
 The maximum amount is 2,097,152 pages or 4 GW; in a fully equipped
-machine the address of the last word is 0xFFFFFFFF.
+machine the address of the last word is 0xFFFFFFFF.  A read from
+a non-existent page returns 0; a write to a non-existent page does nothing.
+To determine if a page exists, read a word from the page.
+If the value is not 0, the page exists.  Otherwise, write a non-zero value
+to the same word and read it a second time.  If the value is 0, the page
+does not exist.  Otherwise the page exists; write 0 to the word.
 
 We write M[x] to specify the memory location whose address is x.
    
@@ -103,12 +108,13 @@ Each cycle of the PDP-8/X begins by setting IR to M[PC] and setting OP from the 
 most significant bits (0xF000) of IR.
 The 21 most significant bits of PC (0xFFFFF800) are copied to Y, and the 11 least significant
 bits of IR are set to 0.
-Then PC is set to PC + 1, but if PC is 0xFFFFFFFF, then its new value is 0x00000000.
+Then PC is set to PC + 1, but if PC is equal to the last word on the last
+existing page, then set PC to 0.
       
 ## Memory-referencing instructions
    
 Every instruction except the ones whose OP register contains 0x6, 0x7, 0xE, or 0xF
-is a memory-referencing instruction (MRI), all of which have the same basic format.
+is a memory-referencing instruction (MRI), all of which have the same format.
 The Y register is set in a common way for all MRIs, and then the value of OP specifies
 exactly what to do with Y and the user-visible registers of the PDP-8/X.
 
@@ -129,12 +135,12 @@ Then one of the following six cases is chosen:
  
  * If OP is 0x2 or 0xA, then M[Y] is set to AC, and AC is set to zero.
  
- * If OP is 0x3 or 0xA, then M[Y] is set to M[Y] + 1.  If M[Y] is now 0,
+ * If OP is 0x3 or 0xB, then M[Y] is set to M[Y] + 1.  If M[Y] is now 0,
    then PC is set to PC + 1, but if PC is 0xFFFFFFFF, then its new value is 0x00000000.
  
- * If OP is 0x4 or 0xB, then M[Y] is set to PC and PC is set to Y + 1.
+ * If OP is 0x4 or 0xC, then M[Y] is set to PC and PC is set to Y + 1.
  
- * If is 0x5 or 0xC, then PC is set to Y.
+ * If is 0x5 or 0xD, then PC is set to Y.
  
 # I/O instructions
  
@@ -166,23 +172,23 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
  
  * If the 0x0001 bit of IR is 1, then A is set to A + 1 without overflow.
  
- * If the RL bit of IR is 1 and the RT bit of IR is 0,
-   then A and L are jointly rotated left by one bit.  That is, L is saved
-   and set to 0, A is shifted left by one bit, and the saved L
-   is added to A.
-  
- * If the RL bit of IR is 1 and then RT bit of IR is 1,
-   then A and L are jointly rotated left by two bits.  This can be
-   done by rotating left by one bit twice, or more efficiently.
-   
- * If the RR bit of IR is 1 and the RT bit of IR is 0,
+ * If the RR bit of IR is 1 and the RL and RT bits of IR are 0,
    then A and L are jointly rotated right by one bit.  That is, L is saved
    and set to 0, A is shifted left by one bit, and the saved L
    is added to A.
    
- * If the RR bit of IR is 1 and then RT bit of IR is 1,
+ * If the RR and RT bits of IR are 1 and the RL bit of IR is 0,
    then A and L are jointly rotated right by two bits.  This can be
    done by rotating right by one bit twice, or more efficiently.
+   
+ * If the RL bit of IR is 1 and the RR and RT bits of IR are 0,
+   then A and L are jointly rotated left by one bit.  That is, L is saved
+   and set to 0, A is shifted left by one bit, and the saved L
+   is added to A.
+  
+ * If the RL and RT bits of IR are 1 and then RR bit of IR is 0,
+   then A and L are jointly rotated left by two bits.  This can be
+   done by rotating left by one bit twice, or more efficiently.
    
  * If the RL and RR bits are 0 and the RT bit is 1, then the
    16 most significant (0xFFFF0000) bits of A are exchanged with the least
