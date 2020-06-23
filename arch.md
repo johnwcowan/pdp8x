@@ -15,60 +15,62 @@ PDP-8/A (the letters are meaningless and not even alphabetical), are the
 *[PDP-8/E and PDP/8-M Small Computer Handbook 1972](https://www.grc.com/pdp-8/docs/PDP-8_Small_Computer_Handbook_1972.pdf)*
 and the *[PDP/8-A Miniprocessor Users Manual 1976](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/EK-8A002-MM-002.pdf)*.
 This document is much less comprehensive, and will attempt to explain
-as clearly as possible what a PDP-8/X CPU actually does.
+as clearly as possible what a PDP-8/X CPU actually appears to do.
+(Of course the implementation may be quite different, provided the
+registers and memory locations are the same.)
+
+The 32-bit words can be seen as
+either a vector of 32 bits from the most significant bit
+to the least significant bit, or a signed integer value
+between -2,147,483,648 and 2,147,483,647 inclusive.
+The representation of the integer is twos-complement,
+like most machines today. That is, a word is negated
+by bitwise-NOTting it and then adding 1 to the result.
+
+We write numeric values either as signed decimal numbers
+or as hexadecimal values starting with 0x.
+This is different from PDP-8 architecture descriptions,
+which use octal numbers, grouping the 12 bits as 4 groups of 3.
+
 
 ## Registers
 
 The user-visible registers of a PDP-8/X are very few by modern standards:
 
- *  The AC or accumulator register is 32 bits wide, and is used
-    by almost all instructions.  Its contents can be seen as
-    either a vector of 32 bits from the most significant bit
-    to the least significant bit, or a signed integer value
-    between -2,147,483,648 and 2,147,483,647 inclusive.
-    
-    The representation of the integer is twos-complement,
-    like most machines today. That is, the most significant
-    bit is the sign bit, and a number is negated by changing
-    all the 1 bits to 0 bits and all the 0 bits to 1 bits
-    and then adding 1 to the result.
-    
-    We write numeric values either as signed decimal numbers
-    or as hexadecimal values starting with 0x.
-    This is different from PDP-8 architecture descriptions,
-    which use octal numbers, grouping the 12 bits as 4 groups of 3.
-    
-  *  The MQ or multiplier-quotient register is also 32 bits wide.
-     The PDP-8/X does not have multiply or divide operations, so
-     for the most part it is just another register, much less useful
-     than the AC register.
+ * The AC or accumulator register is 32 bits wide, and is used
+   by almost all instructions.  Its contents 
+        
+ * The MQ or multiplier-quotient register is also 32 bits wide.
+   The PDP-8/X does not have multiply or divide operations, so
+    for the most part it is just another register, much less useful
+    than the AC register.
      
-   * The L or link register is a single bit.  When adding a value to
-     the AC, any overflow changes the L register from 0 to 1
-     or from 1 to 0.
+  * The L or link register is a single bit.  When adding a value to
+    the AC, any overflow changes the L register from 0 to 1
+    or from 1 to 0.
      
-   * The PC or program counter points to the next instruction to be
-     executed. Its value is an unsigned integer
-     between 0 and however much memory is installed in the system.
+  * The PC or program counter points to the next instruction to be
+    executed. Its value is an unsigned integer
+    between 0 and however much memory is installed in the system.
      
   The following registers are used only by this explanation of the implementation:
   
-   * The 16-bit IR register holds the instruction currently being executed.
-     It is always treated as a bit vector.  In order to talk about individual bits,
-     we speak of the 0x8000 bit (most significant), the 0x4000 bit (slightly less
-     significant), and so on down to the 0x0001 bit (least significant).  We can use
-     similar bit masks to talk about multiple bits at the same time.
+  * The 16-bit IR register holds the instruction currently being executed.
+    It is always treated as a bit vector.  In order to talk about individual bits,
+    we speak of the 0x8000 bit (most significant), the 0x4000 bit (slightly less
+    significant), and so on down to the 0x0001 bit (least significant).  We can use
+    similar bit masks to talk about multiple bits at the same time.
+    
+  * The OP register is 4 bits and contains the most significant 4 bits of IR.
+  
+  * The S register is 1 bit, and is 1 if the next instruction is going to be skipped
+    (not executed) and 0 otherwise.
+    
+  * The Y register contains the address of the memory location being accessed by the
+     current instruction (if any).
      
-   * The OP register is 4 bits, and always contains the most significant 4 bits of the IR.
-   
-   * The S register is 1 bit, and is 1 if the next instruction is going to be skipped
-     (not executed) and 0 otherwise.
-
-   *  The Y register contains the address of the memory location being accessed by the
-      current instruction (if any).
-      
    * The D register is 8 bits, and contains the number of an I/O device.
-   
+  
    * The DOP register is 4 bits, and contains the number of a device-specific I/O instruction.
       
 ## Memory
@@ -83,7 +85,7 @@ The minimum amount of memory for a PDP-8/X is 16 pages or 32 KW.
 The maximum amount is 2,097,152 pages or 4 GW; in a fully equipped
 machine the address of the last word is 0xFFFFFFFF.
 
-We wrote M[x] to specify the memory location whose address is x.
+We write M[x] to specify the memory location whose address is x.
    
 Because there are two instructions per word and all addressing is by words,
 it is sometimes necessary to have a no-operation instruction (0x7000)
@@ -97,11 +99,11 @@ bits of the word.**
 
 ## Instruction decoding
 
-Each cycle of the PDP-8/X begins by setting IR to M[PC] and setting OP from IR.
-The 21 most significant bits of IR are copied to Y, and the 11 least significant
-bits are set to 0.
+Each cycle of the PDP-8/X begins by setting IR to M[PC] and setting OP from the four
+most significant bits (0xF000) of IR.
+The 21 most significant bits of PC (0xFFFFF800) are copied to Y, and the 11 least significant
+bits of IR are set to 0.
 Then PC is set to PC + 1, but if PC is 0xFFFFFFFF, then its new value is 0x00000000.
-
       
 ## Memory-referencing instructions
    
@@ -153,68 +155,71 @@ For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
 and the 0x0002 bit is called the RT (rotate twice) bit.
 
-  * If the 0x0200 bit of IR is 1, then A is set to 0.
+ * If the 0x0200 bit of IR is 1, then A is set to 0.
   
-  * If the 0x0100 bit of IR is 1, then L is set to 0
+ * If the 0x0100 bit of IR is 1, then L is set to 0
+
+ * If the 0x0040 bit of IR is 1, then A is set to the bitwise-NOT of A,
+   or equivalently to (-A) - 1.
+   
+ * If the 0x0020 bit of IR is 1, then L is set to 1 - L.
  
-  * If the 0x0040 bit of IR is 1, then A is set to the bitwise-NOT of A,
-    or equivalently to (-A) - 1.
-    
-  * If the 0x0020 bit of IR is 1, then L is set to 1 - L.
-  
-  * If the 0x0001 bit of IR is 1, then A is set to A + 1 without overflow.
-  
-  * If the RL bit of IR is 1 and the RT bit of IR is 0,
-    then A and L are jointly rotated left by one bit.  That is, L is saved
-    and set to 0, A is shifted left by one bit, and the saved L
-    is added to A.
-    
-  * If the RL bit of IR is 1 and then RT bit of IR is 1,
-    then A and L are jointly rotated left by two bits.  This can be
-    done by rotating left by one bit twice, or more efficiently.
-    
-  * If the RR bit of IR is 1 and the RT bit of IR is 0,
-    then A and L are jointly rotated right by one bit.  That is, L is saved
-    and set to 0, A is shifted left by one bit, and the saved L
-    is added to A.
-    
-  * If the RR bit of IR is 1 and then RT bit of IR is 1,
-    then A and L are jointly rotated right by two bits.  This can be
-    done by rotating right by one bit twice, or more efficiently.
-    
-  * If the RL and RR bits are 0 and the RT bit is 1, then the
-    16 most significant (0xFFFF0000) bits of A are exchanged with the least
-    significant (0X0000FFFF) bits of A.
-    
-  * If the RL, RR, and RT bits are all 1, then A is set to PC.
-  
-  * If the RL and RR bits are 1 and the RT bit is 0, then the
-    0xF000 and the 0x0F00 bits of A are exchanged, and the
-    0x00F0 and the 0x000F bits of A are exchanged.
-    
-  * If the 0x0080 bit is 1, then AC is set to AC bitwise-ORed with MQ.
-  
-  * If the 0x0008 bit is 1, then MQ is set to AC.
-  
-  * If the 0x0080 and the 0x0008 bits are both 1, then MQ and AC are exchanged.
-    
- # Skip instructions
+ * If the 0x0001 bit of IR is 1, then A is set to A + 1 without overflow.
  
- If OP is 0xF, then PC is extended by 1 depending on various bits.
- The S register is set to 0 at the start of decoding.
+ * If the RL bit of IR is 1 and the RT bit of IR is 0,
+   then A and L are jointly rotated left by one bit.  That is, L is saved
+   and set to 0, A is shifted left by one bit, and the saved L
+   is added to A.
+  
+ * If the RL bit of IR is 1 and then RT bit of IR is 1,
+   then A and L are jointly rotated left by two bits.  This can be
+   done by rotating left by one bit twice, or more efficiently.
+   
+ * If the RR bit of IR is 1 and the RT bit of IR is 0,
+   then A and L are jointly rotated right by one bit.  That is, L is saved
+   and set to 0, A is shifted left by one bit, and the saved L
+   is added to A.
+   
+ * If the RR bit of IR is 1 and then RT bit of IR is 1,
+   then A and L are jointly rotated right by two bits.  This can be
+   done by rotating right by one bit twice, or more efficiently.
+   
+ * If the RL and RR bits are 0 and the RT bit is 1, then the
+   16 most significant (0xFFFF0000) bits of A are exchanged with the least
+   significant (0X0000FFFF) bits of A.
+   
+ * If the RL, RR, and RT bits are all 1, then A is set to PC.
  
-  * If the 0x0200 bit of IR is 1, then AC is set to 0.
-  
-  * If the 0x0100 bit of IR is 1 and the sign (0x80000000) bit of AC is 1,
-    (that is, A is negative), then S is set to 1.
+ * If the RL and RR bits are 1 and the RT bit is 0, then the
+   0xF000 and the 0x0F00 bits of A are exchanged, and the
+   0x00F0 and the 0x000F bits of A are exchanged.
+   
+ * If the 0x0080 bit is 1, then AC is set to AC bitwise-ORed with MQ.
+ 
+ * If the 0x0008 bit is 1, then MQ is set to AC.
+
+ * If the 0x0080 and the 0x0008 bits are both 1, then MQ and AC are exchanged.
     
-  * If the 0x0040 bit of IR is 1 and AC is 0, then S is set to 1.
+# Skip instructions
+ 
+If OP is 0xF, then PC is extended by 1 depending on various bits.
+The S register is set to 0 at the start of decoding.
+
+ * If the 0x0200 bit of IR is 1, then AC is set to 0.
+ 
+ * If the 0x0100 bit of IR is 1 and the sign (0x80000000) bit of AC is 1,
+   (that is, A is negative), then S is set to 1.
   
-  * If the 0x0020 bit of IR is 1 and L is 1, then S is set to 1.
-  
-  * If the 0x0010 bit of IR is 1, then S is set to 1 - S.
-  
-  * If S is set to 1, then set PC to PC + 1.
-  
-  * if the 0x0002 bit of IR is 1, then halt the PDP-8/X processor.
-  
+ * If the 0x0040 bit of IR is 1 and AC is 0, then S is set to 1.
+ 
+ * If the 0x0020 bit of IR is 1 and L is 1, then S is set to 1.
+ 
+ * If the 0x0010 bit of IR is 1, then S is set to 1 - S.
+ 
+ * If S is set to 1, then set PC to PC + 1.
+ 
+ * if the 0x0002 bit of IR is 1, then halt the PDP-8/X processor.
+ 
+# Other instructions
+
+If OP is 0xE, then the instructions are reserved and no action is taken.
