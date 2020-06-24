@@ -162,7 +162,7 @@ Then one of the following six cases is chosen:
  * If is 0x5 or 0xD, then PC is set to Y.
    The assembler mnemonic is JMP.
  
-# I/O instructions
+## I/O instructions
  
 If OP is 0x6, then D is set to the 0x0FF0 bits of IR
 and DOP is set to the 0x000F bits of IR.
@@ -171,7 +171,7 @@ the values of D and DOP, and is documented elsewhere.
 If D corresponds to an unknown or unavailable device, or
 DOP to an undefined instruction, then no action is taken.
  
-# Operate instructions
+## Operate instructions
  
 If OP is 0x7 then various operations on A, L, and/or MQ are
 performed depending on the bits of IR, which are examined
@@ -244,7 +244,7 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
  * If the 0x0080 and the 0x0008 bits are both 1, then MQ and AC are exchanged.
    The assembler mnemonic is SWP.
     
-# Skip instructions
+## Skip instructions
  
 If OP is 0xF, then PC is increased by 1 depending on various bits.
 The S register is set to 0 at the start of decoding.
@@ -273,6 +273,6 @@ The S register is set to 0 at the start of decoding.
  * if the 0x0002 bit of IR is 1, then halt the PDP-8/X processor.
    The assembler mnemonic is HLT.
  
-# Other instructions
+## Other instructions
 
 If OP is 0xE, then the instructions are reserved and no action is taken.
