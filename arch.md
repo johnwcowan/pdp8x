@@ -94,7 +94,7 @@ The page whose addresses are #x00000000 to #x000007FF inclusive is called
 called the *current page*.
    
 The minimum amount of memory for a PDP-8/X is 16 pages or 32 KW.
-The maximum amount is 2,097,152 pages or 4 GW; in a fully equipped
+The maximum amount is 2M or 2,097,152 pages or 4 GW; in a fully equipped
 machine the address of the last word is 0xFFFFFFFF.  A read from
 a non-existent page returns 0; a write to a non-existent page does nothing.
 
