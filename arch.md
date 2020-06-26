@@ -194,8 +194,8 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
  * If the 0x0020 bit of IR is 1, then L is set to 1 - L.
    The assembler mnemonic is CLL (clear link).
  
- * If the 0x0001 bit of IR is 1, then A is set to A + 1;
-   overflow is ignored.
+ * If the 0x0001 bit of IR is 1, then A is set to A + 1.
+   If there is an overflow out of AC as a result, set L = 1 - L.
    The assembler mnemonic is IAC (increment AC).
  
  * If the RR bit of IR is 1 and the RL and RT bits of IR are 0,
