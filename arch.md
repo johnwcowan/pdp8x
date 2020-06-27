@@ -64,7 +64,8 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   in this explanation; they may or may not correspond to actual registers:
   
   * The 16-bit IR register holds the instruction currently being executed.
-    It is always treated as a bit vector.  In order to talk about individual bits,
+    Note that two instructions are stored in a word.
+    IR is always treated as a bit vector.  In order to talk about individual bits,
     we speak of the 0x8000 bit (most significant), the 0x4000 bit (slightly less
     significant), and so on down to the 0x0001 bit (least significant).  We can use
     similar bit masks to talk about multiple bits at the same time.
@@ -76,26 +77,31 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
     
   * The 32-bit Y register contains the address of the memory location being accessed by the
      current instruction (if any).
-     The notation M[Y] specifies the memory location whose address is Y.
+     The notation M[Y] specifies the word in memory whose address is Y.
      
    * The 8-bit D register contains the number of an I/O device.
   
-   * The 4-bit DOP registercontains the number of a device-specific I/O instruction.
+   * The 4-bit DOP register contains the number of a device-specific I/O instruction.
    
    * The 32-bit H register is set when the machine is built, and contains the address of the last
      existing word in memory.
       
 ## Memory
    
-Memory is measured in kibiwords (KW).  1 word is 4 bytes and 1 KW is 1024 words.
-Memory is organized into *pages* that are 2 KW in length, addressed from 0 upwards.
-The page whose addresses are #x00000000 to #x000007FF inclusive is called
+Memory is measured in bytes and in words, where a word is 4 bytes.
+**It is not yet specified whether the PDP-8/X is big-endian
+(most significant byte first) like all PDP-8 machines, or whether it is
+little-endian (least significan byte first) like most modern CPUs.**
+
+Memory is organized into *pages* that are 2 KW (8 KB) in length.
+The page whose addresses are #x00000000 to #x00001FFF inclusive is called
 *page zero*.  The page which contains the instruction currently being executed is
-called the *current page*.
+called the *current page*.  This use of the term *page* has nothing to do
+with virtual memory.
    
-The minimum amount of memory for a PDP-8/X is 16 pages or 32 KW.
-The maximum amount is 2M or 2,097,152 pages or 4 GW; in a fully equipped
-machine the address of the last word is 0xFFFFFFFF.  A read from
+The minimum amount of memory for a PDP-8/X is 32 pages or 64 KW.
+The maximum amount is 512K pages, 1 GW, or 4 GB; in a fully equipped
+machine the address of the last word is 0xFFFFFFFC.  A read from
 a non-existent page returns 0; a write to a non-existent page does nothing.
 
 (To determine if a page exists at run time, read a word from the page.
@@ -103,24 +109,13 @@ If the value is not 0, the page exists.  Otherwise, write a non-zero value
 to the same word and read it a second time.  If the value is 0, the page
 does not exist.  Otherwise the page exists; write 0 to the word.)
 
-Because there are two instructions per word and all addressing is by words,
-it is sometimes necessary to have a no-operation instruction (0x7000)
-as the second instruction of a word.  The PDP-8/X assembler can insert
-such instructions before a label and after a JMS instruction (see below)
-when needed, as it is only possible to
-jump to the first instruction of a word.
-   
-**It is not yet specified whether the first instruction is stored
-in the more significant (0xFFFF0000) or the less significant (0x0000FFFF)
-bits of the word.**
-
 ## Instruction decoding
 
 Each cycle of the PDP-8/X begins by setting IR to M[PC] and setting OP from the four
 most significant bits (0xF000) of IR.
-The 21 most significant bits of PC (0xFFFFF800) are copied to Y, and the 11 least significant
+The 19 most significant bits of PC are copied to Y, and the 13 least significant
 bits of Y are set to 0.
-Then PC is set to PC + 1, but if PC is equal to H, then set PC to 0 instead.
+Then set PC to PC + 1, but if PC is equal to H, then set PC to 0 instead.
       
 ## Memory-referencing instructions
    
@@ -131,13 +126,18 @@ exactly what to do with Y and the user-visible registers of the PDP-8/X.
 
 The first step is to determine an initial value of Y using the page bit of the IR, which is
 the 0x0800 bit, and the 11 least significant bits of the IR, which are the 0x07FF bits.
-If the page bit is 0, then the 21 most significant bits of Y are set to 0, so that
+If the page bit is 0, then the 19 most significant bits of Y are set to 0, so that
 Y represents an address on page zero.  If the page bit is 1, Y will represent an address
-on the current page, and the 21 most significant bits of Y are set to
-the 21 most significant bits of PC - 1 (but if PC is 0, it is set to H).
-Finally, the 11 least significant bits of IR are copied to the least significant bits of Y.
+on the current page, and no special action needs to be taken
+Finally, the 11 least significant bits of IR are shifted left by two bits,
+leaving 0 in the 2 least significant bits,
+and the resulting 13 bits are copied to the 13 least significant bits of Y.
+Note that at this point Y always points to a specific word.
 
 If the most significant bit of OP (or of IR) is set to 1, then Y is set to M[Y].
+In this case, Y can point to an arbitrary byte, although there are no instructions
+to retrieve single bytes from memory.
+
 Then one of the following six cases is chosen:
 
  * If OP is 0x0 or 0x8, then AC is set to AC bitwise-ANDed with M[Y].
@@ -148,7 +148,7 @@ Then one of the following six cases is chosen:
    The assembler mnemonic is, for historical reasons, TAD (two's
    complement add).
  
- * If OP is 0x2 or 0xA, then M[Y] is set to AC, and AC is set to zero.
+ * If OP is 0x2 or 0xA, then M[Y] is set to AC, and AC is set to 0.
    The assembler mnemonic is DCA (deposit and clear AC).
  
  * If OP is 0x3 or 0xB, then M[Y] is set to M[Y] + 1; any overflow is ignored.
@@ -211,8 +211,8 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
    
  * If the RL bit of IR is 1 and the RR and RT bits of IR are 0,
    then A and L are jointly rotated left by one bit.  That is, L is saved
-   and set to 0, A is shifted left by one bit, and the saved L
-   is added to A.
+   and set to the most significant bit of A, A is shifted left by one bit,
+   and the saved L is added to A.
    The assembler mnemonic is RAL (rotate AC left).
    
  * If the RL and RT bits of IR are 1 and then RR bit of IR is 0,
