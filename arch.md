@@ -4,16 +4,19 @@ The PDP-8/X is a rethink of the DEC PDP-8, a 12-bit minicomputer.
 Because the PDP-8 is word-oriented, it almost doesn't matter
 how big the words are, so we extend them from 12 bits to 32 bits.
 However, the instructions are only 16 bits long, so there are two
-of them in a single word.
+of them in a single word.  To avoid difficulties, memory addresses
+are byte addresses rather than word addresses.
 
-Good resources for the final PDP-8 models, the PDP-8/E and the
+Good resources for the final PDP-8 models, the PDP-8/E, PDP-8/F, PDP/8-M, and
 PDP-8/A (the letters are meaningless and not even alphabetical), are the
-*[PDP-8/E and PDP/8-M Small Computer Handbook 1972](https://www.grc.com/pdp-8/docs/PDP-8_Small_Computer_Handbook_1972.pdf)*
-and the *[PDP/8-A Miniprocessor Users Manual 1976](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/EK-8A002-MM-002.pdf)*.
+*[PDP-8/E and PDP/8-M Small Computer Handbook 1973](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/DEC-S8-OSSCH-A.pdf)*
+(note that there are many editions of the *Small Computer Handbook*,
+each significantly different from the previous one) and the
+*[PDP/8-A Miniprocessor Users Manual 1976](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/EK-8A002-MM-002.pdf)*.
 This document is much less comprehensive, and will attempt to explain
 as clearly as possible what a PDP-8/X CPU actually appears to do.
 (Of course the implementation may be quite different, provided the
-registers and memory locations are the same.)
+user-visible registers, memory locations, and behaviors are the same.)
 
 Because the PDP-8/X architecture is designed as a deterministic
 integer machine, there is no support for interrupts, which on the
@@ -49,8 +52,8 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
         
  * The MQ or multiplier-quotient register is also 32 bits wide.
    The PDP-8/X does not have multiply or divide operations, so
-    for the most part it is just another register, much less useful
-    than the AC register.
+    for the most part it is just another register, less useful
+    than the AC register but occasionally convenient.
      
   * The L or link register is a single bit.  When adding a value to
     the AC, any overflow changes the L register from 0 to 1
@@ -75,9 +78,8 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   * The 1-bit S register is 1 if the next instruction is going to be skipped
     (not executed) and 0 otherwise.
     
-  * The 32-bit Y register contains the address of the memory location being accessed by the
-     current instruction (if any).
-     The notation M[Y] specifies the word in memory whose address is Y.
+  * The 32-bit Y register contains the address of the memory location 
+    being accessed by the current instruction (if any).
      
    * The 8-bit D register contains the number of an I/O device.
   
@@ -91,7 +93,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
 Memory is measured in bytes and in words, where a word is 4 bytes.
 **It is not yet specified whether the PDP-8/X is big-endian
 (most significant byte first) like all PDP-8 machines, or whether it is
-little-endian (least significan byte first) like most modern CPUs.**
+little-endian (least significant byte first) like most modern CPUs.**
 
 Memory is organized into *pages* that are 2 KW (8 KB) in length.
 The page whose addresses are #x00000000 to #x00001FFF inclusive is called
@@ -108,6 +110,8 @@ a non-existent page returns 0; a write to a non-existent page does nothing.
 If the value is not 0, the page exists.  Otherwise, write a non-zero value
 to the same word and read it a second time.  If the value is 0, the page
 does not exist.  Otherwise the page exists; write 0 to the word.)
+
+We write M[x] to represent the contents of the word in memory whose address is x.
 
 ## Instruction decoding
 
@@ -128,9 +132,9 @@ The first step is to determine an initial value of Y using the page bit of the I
 the 0x0800 bit, and the 11 least significant bits of the IR, which are the 0x07FF bits.
 If the page bit is 0, then the 19 most significant bits of Y are set to 0, so that
 Y represents an address on page zero.  If the page bit is 1, Y will represent an address
-on the current page, and no special action needs to be taken
-Finally, the 11 least significant bits of IR are shifted left by two bits,
-leaving 0 in the 2 least significant bits,
+on the current page, and no special action needs to be taken.
+
+Finally, the 11 least significant bits of IR are saved and shifted left by two bits,
 and the resulting 13 bits are copied to the 13 least significant bits of Y.
 Note that at this point Y always points to a specific word.
 
@@ -174,8 +178,9 @@ DOP to an undefined instruction, then no action is taken.
 ## Operate instructions
  
 If OP is 0x7 then various operations on A, L, and/or MQ are
-performed depending on the bits of IR, which are examined
-in the order below.
+performed depending on the bits of IR.
+The bits of IR are examined in the order given below.
+Note that all applicable actions are taken, not just the first one.
  
 For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
@@ -246,8 +251,11 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
     
 ## Skip instructions
  
-If OP is 0xF, then PC is increased by 1 depending on various bits.
-The S register is set to 0 at the start of decoding.
+If OP is 0xF, then PC is increased by 1
+(skipping the next instruction) depending on various bits
+of IR, AC, and L.  The S register is set to 0 at the start of decoding.
+The bits of IR are examined in the order given below.
+Note that all applicable actions are taken, not just the first one.
 
  * If the 0x0200 bit of IR is 1, then AC is set to 0.
    The assembler mnemonic is CLA (clear AC).
