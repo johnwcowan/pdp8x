@@ -119,7 +119,7 @@ Each cycle of the PDP-8/X begins by setting IR to M[PC] and setting OP from the 
 most significant bits (0xF000) of IR.
 The 19 most significant bits of PC are copied to Y, and the 13 least significant
 bits of Y are set to 0.
-Then set PC to PC + 1, but if PC is equal to H, then set PC to 0 instead.
+Then set PC to PC + 4, but if PC is equal to H, then set PC to 0 instead.
       
 ## Memory-referencing instructions
    
@@ -157,7 +157,7 @@ Then one of the following six cases is chosen:
  
  * If OP is 0x3 or 0xB, then M[Y] is set to M[Y] + 1; any overflow is ignored.
    If M[Y] is now 0, then PC is set to PC + 1,
-   but if PC is, then its new value is 0x00000000.
+   but if PC is H, then its new value is 0x00000000.
    The assembler mnemonic is ISZ (increment and skip if zero).
  
  * If OP is 0x4 or 0xC, then M[Y] is set to PC and PC is set to Y + 1.
@@ -177,7 +177,7 @@ DOP to an undefined instruction, then no action is taken.
  
 ## Operate instructions
  
-If OP is 0x7 then various operations on A, L, and/or MQ are
+If OP is 0x7 then various operations on AC, L, and/or MQ are
 performed depending on the bits of IR.
 The bits of IR are examined in the order given below.
 Note that all applicable actions are taken, not just the first one.
@@ -186,57 +186,58 @@ For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
 and the 0x0002 bit is called the RT (rotate twice) bit.
 
- * If the 0x0200 bit of IR is 1, then A is set to 0.
+ * If the 0x0200 bit of IR is 1, then AC is set to 0.
    The assembler mnemonic is CLA (clear AC).
   
- * If the 0x0100 bit of IR is 1, then L is set to 0
+ * If the 0x0100 bit of IR is 1, then L is set to 0.
    The assembler mnemonic is CLL (clear link).
 
- * If the 0x0040 bit of IR is 1, then A is set to the bitwise-NOT of A,
+ * If the 0x0040 bit of IR is 1, then AC is set to the bitwise-NOT of AC,
    or equivalently to (-A) - 1.
    The assembler mnemonic is CMA (complement AC).
    
  * If the 0x0020 bit of IR is 1, then L is set to 1 - L.
-   The assembler mnemonic is CLL (clear link).
+   The assembler mnemonic is CML (clear link).
  
- * If the 0x0001 bit of IR is 1, then A is set to A + 1.
-   If there is an overflow out of AC as a result, set L = 1 - L.
+ * If the 0x0001 bit of IR is 1, then AC is set to AC + 1.
+   If there is an overflow out of AC as a result, set L to 1 - L.
    The assembler mnemonic is IAC (increment AC).
  
  * If the RR bit of IR is 1 and the RL and RT bits of IR are 0,
-   then A and L are jointly rotated right by one bit.  That is, L is saved
-   and set to 0, A is shifted left by one bit, and the saved L
-   is added to A.
+   then AC and L are jointly rotated right by one bit.
+   That is, the lowest order bit is saved, AC is shifted right by one bit,
+   the most significant bit of AC is set to L
+   and L is set to the saved bit.
    The assembler mnemonic is RAR (rotate AC right).
    
  * If the RR and RT bits of IR are 1 and the RL bit of IR is 0,
-   then A and L are jointly rotated right by two bits.  This can be
+   then AC and L are jointly rotated right by two bits.  This can be
    done by rotating right by one bit twice, or more efficiently.
    The assembler mnemonic is RTR (rotate twice right).
    
  * If the RL bit of IR is 1 and the RR and RT bits of IR are 0,
-   then A and L are jointly rotated left by one bit.  That is, L is saved
-   and set to the most significant bit of A, A is shifted left by one bit,
-   and the saved L is added to A.
+   then AC and L are jointly rotated left by one bit.  That is, L is saved,
+   AC is shifted left by one bit, and the least significant bit of AC
+   is set to L.
    The assembler mnemonic is RAL (rotate AC left).
    
  * If the RL and RT bits of IR are 1 and then RR bit of IR is 0,
-   then A and L are jointly rotated left by two bits.  This can be
+   then AC and L are jointly rotated left by two bits.  This can be
    done by rotating left by one bit twice, or more efficiently.
    The assembler mnemonic is RTL (rotate twice left).
    
  * If the RL and RR bits are 0 and the RT bit is 1, then the
-   16 most significant (0xFFFF0000) bits of A are exchanged with the 16
-   least significant (0X0000FFFF) bits of A.
+   16 most significant (0xFFFF0000) bits of AC are exchanged with the 16
+   least significant (0X0000FFFF) bits of AC.
    The assembler mnemonic is HSW (halfword swap); there is no PDP-8 equivalent.
    
- * If the RL, RR, and RT bits are all 1, then A is set to PC.
+ * If the RL, RR, and RT bits are all 1, then AC is set to PC.
    The assembler mnemonic is PCA (PC to AC); this is a PDP/8-A
    instruction without its own mnemonic.
  
  * If the RL and RR bits are 1 and the RT bit is 0, then the
-   0xF000 and the 0x0F00 bits of A are exchanged, and the
-   0x00F0 and the 0x000F bits of A are exchanged.
+   0xF000 and the 0x0F00 bits of AC are exchanged, and the
+   0x00F0 and the 0x000F bits of AC are exchanged.
    The assembler mnemonic is BSW (byte swap); the PDP-8 equivalent
    swaps the two six-bit halfwords and so is more like the HSW instruction.
    
