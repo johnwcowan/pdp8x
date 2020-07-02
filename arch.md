@@ -83,27 +83,24 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
      
    * The 8-bit D register contains the number of an I/O device.
   
-   * The 4-bit DOP register contains the number of a device-specific I/O instruction.
+   * The 4-bit DOP register contains the number of
+     a device-specific I/O instruction.
    
-   * The 32-bit H register is set when the machine is built, and contains the address of the last
-     existing word in memory.
-      
+   * The 32-bit H register is set when the machine is built,
+     and contains the address of the last existing word in memory.
+           
 ## Memory
    
-Memory is measured in bytes and in words, where a word is 4 bytes.
-**It is not yet specified whether the PDP-8/X is big-endian
-(most significant byte first) like all PDP-8 machines, or whether it is
-little-endian (least significant byte first) like most modern CPUs.**
-
-Memory is organized into *pages* that are 2 KW (8 KB) in length.
-The page whose addresses are #x00000000 to #x00001FFF inclusive is called
+Memory is measured in 32-bit words.
+It is organized into *pages* that are 2 KW in length.
+The page whose addresses are #x0000_0000 to #x0000_03FF inclusive is called
 *page zero*.  The page which contains the instruction currently being executed is
 called the *current page*.  This use of the term *page* has nothing to do
 with virtual memory.
    
 The minimum amount of memory for a PDP-8/X is 32 pages or 64 KW.
-The maximum amount is 512K pages, 1 GW, or 4 GB; in a fully equipped
-machine the address of the last word is 0xFFFFFFFC.  A read from
+The maximum amount is 512K pages, 1 GW; in a fully equipped
+machine the address of the last word is 0x3FFF_FFFF.  A read from
 a non-existent page returns 0; a write to a non-existent page does nothing.
 
 (To determine if a page exists at run time, read a word from the page.
@@ -111,15 +108,48 @@ If the value is not 0, the page exists.  Otherwise, write a non-zero value
 to the same word and read it a second time.  If the value is 0, the page
 does not exist.  Otherwise the page exists; write 0 to the word.)
 
-We write M[x] to represent the contents of the word in memory whose address is x.
+We write M[x] to represent the contents of the word in memory
+whose address is x.
 
 ## Instruction decoding
 
-Each cycle of the PDP-8/X begins by setting IR to M[PC] and setting OP from the four
-most significant bits (0xF000) of IR.
-The 19 most significant bits of PC are copied to Y, and the 13 least significant
-bits of Y are set to 0.
-Then set PC to PC + 4, but if PC is equal to H, then set PC to 0 instead.
+**This is still wrong and must be rewritten.**
+
+Decode and execute the instructions in M[PC] as follows:
+
+ * Set IR to the most significant halfword
+   (that is, the 16 most significant bits) of M[Y].
+ * Set OP to the 4 most significant bits of IR.
+ * Set the 21 most significant bits of PC are copied to Y,
+   and the 11 least significant bits of Y are set to 0.
+ * If S is set to 0, execute the instruction based on the contents of OP
+   and the details in the following sections; otherwise
+   do not execute the instructions and set S to 0.
+ * Set IR to the least significant halfword
+   (that is, the 16 least significant bits) of M[Y].
+ * Set OP to the 4 most significant bits of IR.
+ * Set the 21 most significant bits of PC are copied to Y,
+   and the 11 least significant bits of Y are set to 0.
+ * If S is set to 0, execute the instruction based on the contents of OP
+   and the details in the following sections; otherwise
+   do not execute the instruction and set S to 0.
+   
+Then set PC to PC + 1 and decode the next two instructions.
+
+The assembler must insert strategic NOP (0x7000) instructions
+in the following cases:
+
+ * A JMS instruction must appear in the least significant halfword
+   of a memory location.
+   If it would normally be assembled into the most significant halfword,
+   a NOP is placed in the most significant halfword
+   and the JMP in the least significant halfword.
+   
+ * The target of a JMP instruction must appear in the high-order halfword
+   of a memory location.
+   If it would normally be assembled into the least significant halfword,
+   a NOP is placed there instead and the target is assembled into the
+   most significant halfword of the next word.
       
 ## Memory-referencing instructions
    
@@ -130,17 +160,18 @@ exactly what to do with Y and the user-visible registers of the PDP-8/X.
 
 The first step is to determine an initial value of Y using the page bit of the IR, which is
 the 0x0800 bit, and the 11 least significant bits of the IR, which are the 0x07FF bits.
-If the page bit is 0, then the 19 most significant bits of Y are set to 0, so that
+If the page bit is 0, then the 21 most significant bits of Y are set to 0, so that
 Y represents an address on page zero.  If the page bit is 1, Y will represent an address
 on the current page, and no special action needs to be taken.
 
-Finally, the 11 least significant bits of IR are saved and shifted left by two bits,
-and the resulting 13 bits are copied to the 13 least significant bits of Y.
-Note that at this point Y always points to a specific word.
+Finally, the 11 least significant bits of IR are
+copied to the 13 least significant bits of Y.
 
 If the most significant bit of OP (or of IR) is set to 1, then Y is set to M[Y].
-In this case, Y can point to an arbitrary byte, although there are no instructions
-to retrieve single bytes from memory.
+This is called *indirect addressing*.  If the bit is set to 0, it is called
+*direct addressing*, and no special action is taken.  Any word in memory can be
+accessed indirectly, but only the 2KW of page zero and the 2KW of the current page
+can be accessed directly.
 
 Then one of the following six cases is chosen:
 
@@ -254,7 +285,7 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
  
 If OP is 0xF, then PC is increased by 1
 (skipping the next instruction) depending on various bits
-of IR, AC, and L.  The S register is set to 0 at the start of decoding.
+of IR, AC, and L.
 The bits of IR are examined in the order given below.
 Note that all applicable actions are taken, not just the first one.
 
@@ -271,17 +302,15 @@ Note that all applicable actions are taken, not just the first one.
  * If the 0x0020 bit of IR is 1 and L is 1, then S is set to 1.
    The assembler mnemonic is SNL (skip if non-zero L).
  
- * If the 0x0010 bit of IR is 1, then S is set to 1 - S.
+ * If the 0x0010 bit of IR is 1, then S is set to 1.
    The assembler mnemonics for the previous three instructions
    when combined with this bit are SPA (skip if positive-or-zero AC),
    SNA (skip if non-zero AC), and SZL (skip if zero L) respectively.
- 
- * If S is set to 1, then set PC to PC + 1, but if PC is equal to H,
-   then set PC to 0.
- 
+  
  * if the 0x0002 bit of IR is 1, then halt the PDP-8/X processor.
    The assembler mnemonic is HLT.
  
 ## Other instructions
 
-If OP is 0xE, then the instructions are reserved and no action is taken.
+If OP is 0xE, no action is taken. All such instructions are reserved
+for possible future use.
