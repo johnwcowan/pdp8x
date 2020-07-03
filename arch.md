@@ -3,8 +3,8 @@
 The PDP-8/X is a rethink of the DEC PDP-8, a 12-bit minicomputer.
 Because the PDP-8 is word-oriented, it almost doesn't matter
 how big the words are, so we extend them from 12 bits to 32 bits.
-However, the instructions are only 16 bits long, so there are two
-of them in a single word.
+However, the instructions are only 16 bits long; to keep the machine
+word-oriented, the remaining bits are unused except in one case.
 
 Good resources for the final PDP-8 models, the PDP-8/E, PDP-8/F, PDP/8-M, and
 PDP-8/A (the letters are meaningless and not even alphabetical), are the
@@ -85,11 +85,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   
   * The 1-bit S register is 1 if the next instruction is going to be skipped
     (not executed) and 0 otherwise.
-    
-  * The 1-bit Q register is 1 if the next instruction is in the least
-    significant halfword and 0 if the next instruction is in the most
-    significant halfword.
-    
+       
   * The 32-bit Y register contains the address of the memory location 
     being accessed by the current instruction (if any).
      
@@ -129,10 +125,7 @@ whose address is x.
 
 Instructions are fetched, decoded, and executed as follows:
 
- * If the Q register is 0,
-   set IR to the most significant halfword of M[Y];
-   but if the Q register is 1,
-   set IR to the least significant halfword of M[Y].
+ * Set IR to the least significant halfword of M[PC].
    
  * Set OP to the 4 most significant bits of IR.
    
@@ -140,32 +133,15 @@ Instructions are fetched, decoded, and executed as follows:
    to the 21 most significant bits of PC,
    and the 11 least significant bits of Y to 0.
    
- * If Q is 1, set PC to PC + 1, ignoring any overflow.
+ * Set PC to PC + 1, ignoring any overflow.
    
  * If PC is greater than H, set PC to 0.
    
- * Set Q to 1 - Q.
-    
  * If S is 0, execute the instruction based on the contents of OP
    and the details in the following sections
    
  * Set S to 0.
    
-The assembler must insert strategic NOP (0x7000) instructions
-in the following cases:
-
- * A JMS instruction must appear in the least significant halfword
-   of a memory location.
-   If it would otherwise be assembled into the most significant halfword,
-   a NOP is placed in the most significant halfword
-   and the JMS in the least significant halfword.
-   
- * The target of a JMP instruction must appear in the most significant halfword
-   of a memory location.
-   If it would otherwise be assembled into the least significant halfword,
-   a NOP is placed there instead and the target is assembled into the
-   most significant halfword of the next word.
-      
 ## Memory-referencing instructions
    
 If the value of OP is anything except 0x6, 0x7, 0xE, or 0xF,
@@ -232,6 +208,14 @@ Note that all applicable actions are taken, not just the first one.
 For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
 and the 0x0002 bit is called the RT (rotate twice) bit.
+
+ * If the 0x0800 bit if IR is 1,
+   then set the 16 least significant bits of AC
+   to the 16 most significant bits of M[PC],
+   and the 16 most significant bits of AC
+   to the most significant bit of M[PC].
+   The assembler mnemonic is IMA (immediate to AC).
+   This instruction has no PDP-8 equivalent.
 
  * If the 0x0200 bit of IR is 1, then set AC to 0.
    The assembler mnemonic is CLA (clear AC).
