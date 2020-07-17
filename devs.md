@@ -1,8 +1,10 @@
 # PDP-8/X devices
 
-D is the 8-bit register specifying which device to operate.  
-DOP is the 4-bit register specifying what operation to execute.  
+D is the 8-bit register specifying which device to operate, and
+DOP is the 4-bit register specifying what operation to execute.
 For example, an 0x6123 instruction would set D to 0x12 and DOP to 3.
+Instructions whose D specifies an unknown device
+or whose DOP specifies an unknown operation are no-ops.
 
 ## Console keyboard (D = 0x03)
 
