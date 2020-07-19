@@ -58,19 +58,19 @@ similar bit masks to talk about multiple bits at the same time.
 
 The user-visible registers of a PDP-8/X are very few by modern standards:
 
- * The AC or accumulator register is 32 bits wide, and is used
+ * The 32-bit AC or accumulator register, used
    by almost all instructions.
         
- * The MQ or multiplier-quotient register is also 32 bits wide.
+ * The 32-bit MQ or multiplier-quotient register.
    The PDP-8/X does not have multiply or divide operations, so
     for the most part it is just another register, less useful
     than the AC register but occasionally convenient.
      
-  * The L or link register is a single bit.  When adding a value to
+  * The 1-bit L or link register.  When adding a value to
     the AC, any overflow changes the L register from 0 to 1
     or from 1 to 0.
      
-  * The PC or program counter points to the next instruction to be
+  * The 32-bit PC or program counter points to the next instruction to be
     executed. Its value is an unsigned integer
     between 0 and however much memory is installed in the system.
      
@@ -81,7 +81,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
     Note that two instructions are stored in a word.
     IR is always treated as a bit vector.  
     
-  * The 4-bit OP register contains the most significant 4 bits of IR.
+  * The 4-bit OP register contains the 4 most significant bits of IR.
   
   * The 1-bit S register is 1 if the next instruction is going to be skipped
     (not executed) and 0 otherwise.
@@ -103,7 +103,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
    
 Memory is measured in 32-bit words.
 It is organized into *pages* that are 2 KW in length.
-The page whose addresses are #x0000_0000 to #x0000_03FF inclusive is called
+The page whose addresses are #x0000_0000 to #x0000_07FF inclusive is called
 *page zero*.  The page which contains the instruction currently being executed is
 called the *current page*.  This use of the term *page* has nothing to do
 with virtual memory.
@@ -178,15 +178,15 @@ Then one of the following six cases is chosen:
    The assembler mnemonic is DCA (deposit and clear AC).
  
  * If OP is 0x3 or 0xB, then set M[Y] to M[Y] + 1; any overflow is ignored.
-   If M[Y] is now 0, then set PC  to PC + 1.
+   If M[Y] is now 0, then set S to 1.
    If PC is now greater than H, then set PC to 0.
    The assembler mnemonic is ISZ (increment and skip if zero).
  
- * If OP is 0x4 or 0xC, then set M[Y] to PC, set Q to 0,
+ * If OP is 0x4 or 0xC, then set M[Y] to PC
    and set PC to Y + 1.
    The assembler mnemonic is JMS (jump to subroutine).
  
- * If is 0x5 or 0xD, then set PC to Y and set Q to 0.
+ * If is 0x5 or 0xD, then set PC to Y .
    The assembler mnemonic is JMP.
  
 ## I/O instructions
@@ -254,20 +254,20 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
    
  * If the RL and RT bits of IR are 1 and then RR bit of IR is 0,
    then jointly rotate AC and L left by two bits.
-   This can be done by rotating left by one bit twice, or more efficiently.
+   This can be done by rotating left by one bit twice or more efficiently.
    The assembler mnemonic is RTL (rotate twice left).
    
  * If the RL and RR bits are 0 and the RT bit is 1, then exchange the
-   most significant halfword of AC with the 16
-   least significant halfword  of AC.
+   16 most significant bits of AC with the 16
+   16 least significant bits  of AC.
    The assembler mnemonic is HSW (halfword swap); there is no PDP-8 equivalent.
    
  * If the RL, RR, and RT bits are all 1, then set AC to PC.
-   The assembler mnemonic is PCA (PC to AC); this is a PDP/8-A
+   The assembler mnemonic is PCA (PC to AC); this is a PDP/8-A-only
    instruction without its own mnemonic.
  
  * If the RL and RR bits are 1 and the RT bit is 0, then exchange the
-   0xF000 and the 0x0F00 bits of AC and then exchange
+   0xF000 and the 0x0F00 bits of AC and exchange
    0x00F0 and the 0x000F bits of AC.
    The assembler mnemonic is BSW (byte swap); the PDP-8 equivalent
    swaps the two six-bit halfwords and so is more like the HSW instruction.
@@ -289,24 +289,24 @@ The bits of IR are examined in the order given below.
 Note that all applicable actions are taken, not just the first one.
 
  * If the 0x0200 bit of IR is 1, then set AC to 0.
-   The assembler mnemonic is CLA (clear AC).
+   There is no assembler mnemonic.
  
- * If the 0x0100 bit of IR is 1 and the sign (0x80000000) bit of AC is 1,
+ * If the 0x0100 bit of IR = 1 and the sign (0x80000000) bit of AC = 1,
    (that is, AC is negative), then set S to 1.
    The assembler mnemonic is SMA (skip if minus AC).
   
- * If the 0x0040 bit of IR is 1 and AC is 0, then set S to 1.
+ * If the 0x0040 bit of IR = 1 and AC = 0, then set S to 1.
     The assembler mnemonic is SZA (skip if zero AC).
  
- * If the 0x0020 bit of IR is 1 and L is 1, then set S to 1.
+ * If the 0x0020 bit of IR = 1 and L = 1, then set S to 1.
    The assembler mnemonic is SNL (skip if non-zero L).
  
- * If the 0x0010 bit of IR is 1, then set S to 1 - S.
+ * If the 0x0010 bit of IR = 1, then set S to 1 - S.
    The assembler mnemonics for the previous three instructions
    when combined with this bit are SPA (skip if positive-or-zero AC),
    SNA (skip if non-zero AC), and SZL (skip if zero L) respectively.
   
- * If the 0x0002 bit of IR is 1, then halt the PDP-8/X processor.
+ * If the 0x0002 bit of IR = 1, then halt the PDP-8/X processor.
    When the processor is restarted externally, all registers
    (user-visible and not) and all of memory are unchanged.
    The assembler mnemonic is HLT.
