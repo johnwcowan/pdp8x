@@ -78,7 +78,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   in this explanation; they may or may not correspond to actual registers:
   
   * The 16-bit IR register holds the instruction currently being executed.
-    Note that two instructions are stored in a word.
+    Note that an instruction is always stored in the 32 least significant bits.
     IR is always treated as a bit vector.  
     
   * The 4-bit OP register contains the 4 most significant bits of IR.
@@ -158,8 +158,12 @@ on the current page, and no special action needs to be taken.
 Finally, the 11 least significant bits of IR are
 copied to the 11 least significant bits of Y.
 
-If the most significant bit of OP is 1, then set Y to M[Y].
-This is called *indirect addressing*.  If the bit is 0, it is called
+If the most significant bit of OP is 1, then
+if Y is in the range OO00_0020 to 0000_002F,
+set M[Y] to M[Y] + 1.  Then set Y to M[Y].
+This is called *indirect addressing*.
+
+If the most significant bit of OP is 0, it is called
 *direct addressing*, and no special action is taken.  Any word in memory can be
 accessed indirectly, but only the 2KW of page zero and the 2KW of the current page
 can be accessed directly.
