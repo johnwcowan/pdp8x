@@ -307,3 +307,107 @@ Set AC to the 16 least significant bits of DS.
 DOP = 6: Write DC (DLDC).
 
 Set DC to the 16 least significant bits of AC.
+
+## Floating-point (co)processor (D = 0x55)
+
+This is a floating-point processor
+that runs asynchronously with the CPU.
+The CPU sets it up as an I/O device
+and then starts it running, fetching
+instructions from the same memory and
+executing them.
+
+Only the I/O instructions are documented here;
+the behavior of the floating-point processor itself
+is documented elsewhere.
+
+The FPP has the following eight registers.  The values
+of FAPT, FPC, FX0, FBASE, and FY are unsigned integers
+between 0 and H, both inclusive.
+ * FAPT is the 32-bit Active Parameter Table,
+   which points to the memory locations where
+   most of the other registers are stored
+   when the FPP is not executing instructions.
+ * FPC is the 32-bit program counter that
+   points to the next instruction to be executed.
+   Corresponds to M[FAPT+1] when the FPP is not executing.
+ * FX0 is the 32-bit index register pointer, which holds the
+   address of index register 0.  There are 16 index registers
+   stored in consecutive memory; which words are used depends on FX0.
+   Corresponds to M[FAPT+2] when the FPP is not executing.
+ * FBASE is the 32-bit base register, which points to the FPP's
+   equivalent of page zero.
+   Corresponds to M[FAPT+3] when the FPP is not executing.
+ * FY is the 32-bit register that contains the address
+   of the memory location being accessed
+   by the current FPP instruction (if any).
+   Corresponds to M[FAPT+4] when the FPP is not executing.
+ * FAC is the floating-point accumulator,
+   used by almost all FPP instructions.
+   Its format is a 32-bit IEEE binary floating-point number.
+   Corresponds to M[FAPT+5] when the FPP is not executing.
+ * FST is the 4-bit FPP status register, which indicates
+   why the FPP has exited.
+   * The 0x8 bit is set if the last FPP instruction executed
+     was a TRAPn instruction.
+   * The 0x4 bit is set if the FPP stopped because of an
+     FPHLT CPU instruction.
+   * The 0x2 bit is set if the last FPP instruction executed
+     was an FPAUSE instruction.
+   * The 0x1 bit is set if the FPP is executing instructions
+     *or* the 0x2 bit is set.
+ * FF is a 1-bit register indicating that the FPP is *not*
+   executing instructions.
+ 
+DOP = 1: Skip when FPP is done (FPINT).
+
+If FF = 1, set S to 1.
+
+DOP = 2: Clear the FPP registers
+
+Set all the FPP registers to 0.
+
+DOP = 4: Halt the FPP (FPHLT).
+
+Abort the FPP
+at the end of the current FPP instruction
+so that no more instructions are executed.
+Set memory locations M[FAPT] to M[FAPT+5] inclusive
+to the values of FPC, FX0, FBASE, FY, and FAC.
+Set the 0x8000_0000 (sign) bit of the AC to 0.
+
+If FPHLT is executed while the FPP
+is not executing instructions,
+the next FPST will execute just one instruction and FPHLT.
+This facilitates single-stepping the FPP under CPU control.
+
+If FPHLT is executed while the FPP
+is in a paused state, the PC (and M[FAPT+1])
+are made to point to the FPAUSE instruction.
+
+If FPHLT is executed when the last FPP instruction
+is a FEXIT, the 0x8000_0000 (sign) bit is cleared.
+This indicates that the FPP was not in fact forced to stop.
+
+DOP = 5: Start the FPP (FPST).
+
+If the 0x1 bit of FST is 0 and FF is 0,
+set FAPT to AC,
+set the other registers to the corresponding
+values of M[FAPT+1] to M[FAPT+5],
+set S to 1,
+and start the FPP.
+Otherwise do nothing.
+
+DOP = 6: Read FST (FPRST)
+
+Set AC to 0.
+Set the four least significant bits of AC to FST.
+
+DOP = 7: Skip and clear (FPIST).
+
+If FF is 1, set S to 1,
+set AC to 0,
+set the four least significant bits of AC to FST,
+set FST and FF to 0.
+If FF is 0, do nothing.
