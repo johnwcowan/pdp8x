@@ -1,9 +1,8 @@
 # The FPP-8/X architecture
-# NOT YET COMPLETE
 
 The FPP-8/X is a rethink of the DEC FPP-8, a floating point
 coprocessor meant to work with the PDP-8/X.
-Floats are stored in a single 32-bit word.
+Floats are stored in a single 32-bit word
 
 Like PDP-8/X instructions, FPP-8/X instructions are also
 32 bits long, although only the least significant 28 bits are
@@ -70,15 +69,42 @@ whose beginnings are pointed to by the 15 words following
 where the FX0 register points (the word pointed to by FX0 itself
 is not available).  Neither the base page nor the indexed pages
 have to begin at a multiple of address 0x0000_0800.
-   
 
 We write M[x] to represent the contents of the word in memory
 whose address is x.  We write F[x] to represent M[x] when
 interpreted as a float.
 
+## Conversion
+
+Although the FAC normally contains a float, its value can be
+converted to an integer as follows:
+
+ * If FAC is +nan.0, set FAC to 0x0000_0000.
+ * If FAC is greater than 2^31-1,
+   set FAC to 0x7FFF_FFFF.
+ * If FAC is greater than -2^31,
+   set FAC to 0x8000_0000
+ * Otherwise, truncate the float value of FAC towards zero,
+   and set FAC to the numerically equivalent integer value.
+   
+ Correspondingly, when FAC contains an integer, it can be
+ converted to the numerically equivalent float.
+
+## Initializing the FPP-8/X
+
+When the FPP starts running due to a CPU I/O instruction,
+the registers are initialized as follows:
+
+* Set FPC to M[FAPT+1]
+* Set FX0 to M[FAPT+2]
+* Set FBASE to M[FAPT+3]
+* Set FY to M[FAPT+4]
+* Set FAC to M[FAPT+5]
+
 ## Instruction decoding
 
-Instructions are fetched, decoded, and executed as follows:
+When the FPP starts running,
+instructions are fetched, decoded, and executed as follows:
 
  * Set FIR to M[FPC].
    
@@ -99,9 +125,8 @@ Instructions are fetched, decoded, and executed as follows:
 
 Unlike the PDP-8/X, the FPP-8/X has very few
 instructions that do not reference memory, so
-the following steps are taken for most instructions.
-An implementation can skip them when executing any of
-the instructions that do not make use of the FY register.
+the following steps are taken for all instructions
+except those where FOP = 0x10.
 
 The first step is to determine an initial value of FY,
 using the page bit of FIR (the 0x0000_0800 bit) and
@@ -163,14 +188,141 @@ other than those whose FOP value is 0x10 or 0x11.
    The assembler mnemonic is FMULM.
    
  * If FOP is 0x12, then check FINC.
-   If it is 1, then increment M[M[FX0] + FIDX] by 1.
-   In any case,  if M[M[FX0] + FIDX] is 0 then set PC to Y.
+   If it is 1, then increment M[M[FX0] + FIDX] by 1, ignoring overflow.
+   In any case, if M[M[FX0] + FIDX] is 0 then set PC to Y.
  
  * If FOP is 0x13 through 0x17,
-   then set the 0x8 bit of FST to 1,
-   and break out of the instruction execution loop.
- 
+   then set FST to 0x8, set FF to 1,
+   and stop the instruction execution loop.
+   The assembler mnemonics are TRAP3 through TRAP7.
+   
+  By convention, when the CPU gets control
+  after a TRAP4, it issues a JMS to FY
+  and restarts the FPP after the JMS returns.
+  In case of a TRAP5, the CPU issues a JMP to
+  FY and does not automatically restart the FPP.
+  This logic is implemented in the PDP/8-X code
+  that waits for the FPP to stop.
+   `
 ## Special instructions where FOP = 0x10
+
+Note that none of the following instructions
+depend on FY, which therefore must not be computed.
+
+ * If FOPX is 0x0,
+   then set FST to 0x0, FF to 1,
+   and stop the instruction execution loop.
+   The assembler mnemonic is FEXIT.
+   
+ * If FOPX is 0x1,
+   set FAC to the integer value of FAC.
+   The assembler mnemonic is FINT.
+ 
+ * If FOPX iz 0x2,
+   set FAC to the integer value of FAC, and then
+   set M[M[FX0]+FIDX] to FAC.   
+   The assembler mnemonic is ATX.
+   
+ * If FOPX is 0x3,
+   set FAC to to M[M[FX0]+FIDX], and then
+   set FAC to the float value of FAC.
+  The assembler mnemonic is XTA.
+ 
+ * If FOPX is 0x4,
+   do nothing.
+   The assembler mnemonic is FNOP.
+ 
+ * If FOPX is 0x8,
+   set M[M[FX0]+FIDX] to M[FPC] and
+   then set FPC to FCP + 1, ignoring overflow.
+   The assembler mnemonic is LDX.
+ 
+ * If FOPX is 0x9,
+   set M[M[FX0]+FIDX] to the sum
+   of M[M[FX0]+FIDX] and M[FPC];
+   then set FPC to FPC + 1, ignoring overflow.
+   The assembler mnemonic is ADDX.
+ 
+ * If FOPX is 0xA,
+   set FAC to the float value of FAC.
+   The assembler mnemonic is FFLT.
+ 
+Otherwise do nothing.
 
 ## Special instructions where FOP = 0x11
  
+ * If FOPX is 0x0,
+   then if FAC is zero then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JEQ.
+ 
+ * If FOPX is 0x1,
+   then if FAC is not negative then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JGE.
+ 
+ * If FOPX is 0x2,
+   then if FAC is not positive then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JLE.
+
+ * If FOPX is 0x3,
+   then set FPC to FY.
+   The assembler mnemonic is JA.
+
+ * If FOPX is 0x4,
+   then if FAC is not zero then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JNE.
+
+ * If FOPX is 0x5,
+   then if FAC is negative then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JLT.
+
+ * If FOPX is 0x6,
+   then if FAC is positive then set FPC to FY;
+   otherwise do nothing.
+  The assembler mnemonic is JGT.
+
+ * If FOPX is 0x7,
+   then if FAC is less than -2^32^ or
+   greater than 2^32-1 then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JAL.
+
+ * If FOPX is 0x8,
+   set FX0 to FY.
+   The assembler mnemonic is SETX.
+
+ * If FOPX is 0x9,
+   set FBASE to FY.
+   The assembler mnemonic is SETB.
+
+ * If FOPX is 0xA,
+   set M[FY] to a JA instruction
+   that when executed will jump indirectly via FY + 1,
+   set M[FY+1] to FPC, and set FPC to FY + 2, ignoring overflow.
+   The assembler mnemonic is JSA.
+
+ * If FOPX is 0xB,
+   set M[FY] to FPC
+   and then set M[FY+1] to FPC + 1, ignoring overflow.
+   Then set FPC to FY + 1, ignoring overflow.
+   The assembler mnemonic is JSR.
+
+Otherwise do nothing.
+
+## Stopping the instruction loop
+
+When the FPP stops processing instructions due to a
+FEXIT, FPAUSE, FTRAPn, or CPU FPST instruction,
+the following memory locations are set:
+
+ * Set M[FAPT+1] to FPC
+ * Set M[FAPT+2] to FX0
+ * Set M[FAPT+3] to FBASE
+ * Set M[FAPT+4] to FPC
+ 
+ Then set FF to 1.
+
