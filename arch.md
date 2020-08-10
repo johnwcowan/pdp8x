@@ -20,8 +20,8 @@ user-visible registers, memory locations, and behaviors are the same.)
 Because the PDP-8/X architecture is designed as a deterministic
 integer machine, there is no support for interrupts, which on the
 PDP-8 are signaled by simulating a JMS instruction to address 0.
-The optional floating-point support (always provided on the PDP-8/A)
-is also not part of the PDP-8/X.
+An optional floating point coprocessor, the FPP-8/X, is documented
+[elsewhere](fpp.md).
 
 It should be fairly easy to implement this architecture on a chip;
 the ordinary PDP-8 was eventually made into a chip,
@@ -77,9 +77,12 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   The following registers are not visible to programmers and are used
   in this explanation; they may or may not correspond to actual registers:
   
-  * The 16-bit IR register holds the instruction currently being executed.
-    Note that an instruction is always stored in the 32 least significant bits.
-    IR is always treated as a bit vector.  
+  * The 16-bit IR register holds the least significant bits
+    of the instruction currently being executed.
+    IR is always treated as a bit vector.
+    
+  * The 16-bit IMM register holds the most significant bits
+    of the instruction currently being executed.
     
   * The 4-bit OP register contains the 4 most significant bits of IR.
   
@@ -126,6 +129,8 @@ whose address is x.
 Instructions are fetched, decoded, and executed as follows:
 
  * Set IR to the least significant halfword of M[PC].
+ 
+ * Set IMM to the most significant halfword of M[PC].
    
  * Set OP to the 4 most significant bits of IR.
    
@@ -138,7 +143,7 @@ Instructions are fetched, decoded, and executed as follows:
  * If PC is greater than H, set PC to 0.
    
  * If S is 0, execute the instruction based on the contents of OP
-   and the details in the following sections
+   and the details in the following sections.
    
  * Set S to 0.
    
@@ -159,7 +164,7 @@ Finally, the 11 least significant bits of IR are
 copied to the 11 least significant bits of Y.
 
 If the most significant bit of OP is 1, then
-if Y is in the range OO00_0020 to 0000_002F,
+if Y is in the range 0000_0200 to 0000_02FF inclusive,
 set M[Y] to M[Y] + 1.  Then set Y to M[Y].
 This is called *indirect addressing*.
 
@@ -198,7 +203,8 @@ Then one of the following six cases is chosen:
 If OP is 0x6, then set D to the 0x0FF0 bits of IR
 and set DOP to the 0x000F bits of IR.
 The effect of executing such an instruction depends on
-the values of D and DOP, and is documented elsewhere.
+the values of D and DOP, and is documented
+[elsewhere](devs.md).
 If D corresponds to an unknown or unavailable device, or
 DOP to an undefined instruction, then no action is taken.
  
@@ -213,11 +219,10 @@ For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
 and the 0x0002 bit is called the RT (rotate twice) bit.
 
- * If the 0x0800 bit if IR is 1,
-   then set the 16 least significant bits of AC
-   to the 16 most significant bits of M[PC],
+ * If the 0x0800 bit of IR is 1,
+   then set the 16 least significant bits of AC to IMM,
    and the 16 most significant bits of AC
-   to the most significant bit of M[PC].
+   to the sign bit of IMM.
    The assembler mnemonic is IMA (immediate to AC).
    This instruction has no PDP-8 equivalent.
 
@@ -290,7 +295,7 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
 If OP is 0xF, then S is set depending on various bits
 of IR, AC, and L.
 The bits of IR are examined in the order given below.
-Note that all applicable actions are taken, not just the first one.
+Note that *all* applicable actions are taken, not just the first one.
 
  * If the 0x0200 bit of IR is 1, then set AC to 0.
    There is no assembler mnemonic.
