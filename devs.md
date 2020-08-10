@@ -1,10 +1,14 @@
 # PDP-8/X devices
 
-D is the 8-bit register specifying which device to operate, and
-DOP is the 4-bit register specifying what operation to execute.
+Whe the PDP-8/X CPU decodes an I/O instructions, it sets
+the 8-bit D register to specify which device to operate, and
+the 4-bit DOP register to specify what operation to execute.
 For example, an 0x6123 instruction would set D to 0x12 and DOP to 3.
 Instructions whose D specifies an unknown device
 or whose DOP specifies an unknown operation are no-ops.
+
+The following are standard but optional devices.
+Other devices may exist.
 
 ## Console keyboard (D = 0x03)
 
@@ -88,9 +92,9 @@ DOP = 6: Load teleprinter sequence (TLS).
 
 Set TF to 0.
 Set TB to the  least significant bits of AC.
-Start to write one character from PB into the sink,
+Start to write one character from TB into the sink,
 which can be done asynchronously.
-When the character is written, set PF to 1.
+When the character is written, set TF to 1.
 
 ## Binary input from source (D = 0x01)
 
@@ -153,6 +157,7 @@ When the byte is written, set PF to 1.
 
 DOP = 6: Load punch buffer sequence (PLS).
 
+Set PF to 0.
 Set PB to the 8 least significant bytes of AC.
 Start to write one byte from PB into the sink,
 which can be done asynchronously.
@@ -233,6 +238,7 @@ The minimum number of tracks is 200,
 and the maximum number of tracks is 2^27^ - 1.
 
 The controller has four registers:
+
  * DC is the 16-bit command register, whose various bits
    instruct the controller what to do.
  * DS is the 16-bit status register, whose various bits
@@ -246,11 +252,15 @@ The controller has four registers:
    it is written.
 
 The 0x7000 bits of DC contain the command to be executed
-by the next DLAG instruction.  The command 0 means that data
+by the next DLAG instruction.  The command 0 means that a sector
 is to be read, 2 that the disk is to be set read-only,
 3 that the specified track is to be seeked to
 but no other action taken,
-and 4 that data is to be written.
+and 4 that a sector is to be written.
+After a sector is read or written,
+set DA to DA + 0x0000_0800
+and set DD to DD + 0x0000_0800,
+ignoring any overflow.
 
 The 0x0200 bit of DC indicates whether a completed seek
 sets the 0x8000 (sign) bit of DS to 0 or whether it leaves
@@ -265,8 +275,8 @@ if the device has not yet completed the current operation,
 and is 0 if it has.  Whether seeking counts as an operation
 depends on the 0x0200 bit of DC.
 
-The 0x0FFF bits of DS indicate various errors; if they are
-all 0, there is no error.
+The 0x0FFF bits of DS indicate various errors;
+if they are all 0, there is no error.
 Specifically, the 0x0200 bit is 1 if the selected device
 does not exist,
 the 0x0020 bit is 1 if the selected device has been set read-only,
@@ -285,13 +295,13 @@ If the least significant bit of AC = 0,
 set AC and DS to 0.
 If the least significant bit of AC = 1,
 set AC, DC, DS, DD, and DA to 0.
-Any action in progress is stopped.
+Any asynchronous action in progress is stopped.
 
 DOP = 3: Load address and go (DLAG).
 
 Set DD to AC and
 set the 0x8000 bit of DS to 1.
-specified in DC,
+Start the action specified in DC,
 which can be done asynchronously.
 When the action is complete,
 set the 0x8000 bit of DS to 0
@@ -312,40 +322,47 @@ Set DC to the 16 least significant bits of AC.
 
 This is a floating-point processor
 that runs asynchronously with the CPU.
-The CPU sets it up as an I/O device
+The CPU sets it up as if it were an I/O device
 and then starts it running, fetching
 instructions from the same memory and
 executing them.
 
 Only the I/O instructions are documented here;
 the behavior of the floating-point processor itself
-is documented elsewhere.
+is documented [elsewhere](fpp.md).
 
 The FPP has the following eight registers.  The values
 of FAPT, FPC, FX0, FBASE, and FY are unsigned integers
 between 0 and H, both inclusive.
+
  * FAPT is the 32-bit Active Parameter Table,
    which points to the memory locations where
    most of the other registers are stored
    when the FPP is not executing instructions.
+   
  * FPC is the 32-bit program counter that
    points to the next instruction to be executed.
    Corresponds to M[FAPT+1] when the FPP is not executing.
+   
  * FX0 is the 32-bit index register pointer, which holds the
    address of index register 0.  There are 16 index registers
    stored in consecutive memory; which words are used depends on FX0.
    Corresponds to M[FAPT+2] when the FPP is not executing.
+   
  * FBASE is the 32-bit base register, which points to the FPP's
-   equivalent of page zero.
+   analogue of page zero.
    Corresponds to M[FAPT+3] when the FPP is not executing.
+   
  * FY is the 32-bit register that contains the address
    of the memory location being accessed
    by the current FPP instruction (if any).
    Corresponds to M[FAPT+4] when the FPP is not executing.
+   
  * FAC is the floating-point accumulator,
    used by almost all FPP instructions.
    Its format is a 32-bit IEEE binary floating-point number.
    Corresponds to M[FAPT+5] when the FPP is not executing.
+   
  * FST is the 4-bit FPP status register, which indicates
    why the FPP has exited.
    * The 0x8 bit is set if the last FPP instruction executed
@@ -356,6 +373,7 @@ between 0 and H, both inclusive.
      was an FPAUSE instruction.
    * The 0x1 bit is set if the FPP is executing instructions
      *or* the 0x2 bit is set.
+     
  * FF is a 1-bit register indicating that the FPP is *not*
    executing instructions.
  
@@ -372,21 +390,22 @@ DOP = 4: Halt the FPP (FPHLT).
 Abort the FPP
 at the end of the current FPP instruction
 so that no more instructions are executed.
-Set memory locations M[FAPT] to M[FAPT+5] inclusive
+Set memory locations M[FAPT+1] to M[FAPT+5] inclusive
 to the values of FPC, FX0, FBASE, FY, and FAC.
 Set the 0x8000_0000 (sign) bit of the AC to 0.
 
 If FPHLT is executed while the FPP
 is not executing instructions,
-the next FPST will execute just one instruction and FPHLT.
+the next FPST will execute just one instruction.
 This facilitates single-stepping the FPP under CPU control.
 
 If FPHLT is executed while the FPP
 is in a paused state, the PC (and M[FAPT+1])
-are made to point to the FPAUSE instruction.
+are made to point to the FPAUSE instruction,
+so that the pause continues when the FPP is restarted.
 
 If FPHLT is executed when the last FPP instruction
-is a FEXIT, the 0x8000_0000 (sign) bit is cleared.
+is a FEXIT, the 0x8000_0000 (sign) bit of the AC is cleared.
 This indicates that the FPP was not in fact forced to stop.
 
 DOP = 5: Start the FPP (FPST).
@@ -398,6 +417,8 @@ values of M[FAPT+1] to M[FAPT+5],
 set S to 1,
 and start the FPP.
 Otherwise do nothing.
+
+**FIXME: Need to clean up FF polarity***
 
 DOP = 6: Read FST (FPRST)
 
