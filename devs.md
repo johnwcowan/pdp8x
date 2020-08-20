@@ -365,6 +365,8 @@ between 0 and H, both inclusive.
    
  * FST is the 4-bit FPP status register, which indicates
    why the FPP has exited.
+   * **Tentative** The 0x10 bit is set if the system stopped the FPP
+     because another device signaled that it was ready.
    * The 0x8 bit is set if the last FPP instruction executed
      was a TRAPn instruction.
    * The 0x4 bit is set if the FPP stopped because of an
