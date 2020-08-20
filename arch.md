@@ -20,6 +20,7 @@ user-visible registers, memory locations, and behaviors are the same.)
 Because the PDP-8/X architecture is designed as a deterministic
 integer machine, there is no support for interrupts, which on the
 PDP-8 are signaled by simulating a JMS instruction to address 0.
+
 An optional floating point coprocessor, the FPP-8/X, is documented
 [elsewhere](fpp.md).
 
