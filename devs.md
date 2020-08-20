@@ -358,12 +358,12 @@ between 0 and H, both inclusive.
    by the current FPP instruction (if any).
    Corresponds to M[FAPT+4] when the FPP is not executing.
    
- * FAC is the floating-point accumulator,
+ * FAC is the 32-bit floating-point accumulator,
    used by almost all FPP instructions.
    Its format is a 32-bit IEEE binary floating-point number.
    Corresponds to M[FAPT+5] when the FPP is not executing.
    
- * FST is the 4-bit FPP status register, which indicates
+ * FST is the 5-bit FPP status register, which indicates
    why the FPP has exited.
    * **Tentative** The 0x10 bit is set if the system stopped the FPP
      because another device signaled that it was ready.
@@ -378,6 +378,9 @@ between 0 and H, both inclusive.
      
  * FF is a 1-bit register indicating that the FPP is *not*
    executing instructions.
+   
+ * FSTEP is a 1-bit register indicating that the FPP will
+   execute a single instruction when started.
  
 DOP = 1: Skip when FPP is done (FPINT).
 
@@ -389,7 +392,7 @@ Set all the FPP registers to 0.
 
 DOP = 4: Halt the FPP (FPHLT).
 
-Abort the FPP
+Stop the FPP
 at the end of the current FPP instruction
 so that no more instructions are executed.
 Set memory locations M[FAPT+1] to M[FAPT+5] inclusive
@@ -398,11 +401,10 @@ Set the 0x8000_0000 (sign) bit of the AC to 0.
 
 If FPHLT is executed while the FPP
 is not executing instructions,
-the next FPST will execute just one instruction.
-This facilitates single-stepping the FPP under CPU control.
+set FSTEP to 1.
 
 If FPHLT is executed while the FPP
-is in a paused state, the PC (and M[FAPT+1])
+is in a paused state, the FPC (and M[FAPT+1])
 are made to point to the FPAUSE instruction,
 so that the pause continues when the FPP is restarted.
 
@@ -425,12 +427,12 @@ Otherwise do nothing.
 DOP = 6: Read FST (FPRST)
 
 Set AC to 0.
-Set the four least significant bits of AC to FST.
+Set the 5 least significant bits of AC to FST.
 
 DOP = 7: Skip and clear (FPIST).
 
 If FF is 1, set S to 1,
 set AC to 0,
-set the four least significant bits of AC to FST,
+set the 5 least significant bits of AC to FST,
 set FST and FF to 0.
 If FF is 0, do nothing.
