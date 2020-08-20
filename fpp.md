@@ -199,7 +199,7 @@ other than those whose FOP value is 0x10 or 0x11.
   By convention, when the CPU gets control
   after a TRAP4, it issues a JMS to FY
   and restarts the FPP after the JMS returns.
-  In case of a TRAP5, the CPU issues a JMP to
+  In case of a TRAP3, the CPU issues a JMP to
   FY and does not automatically restart the FPP.
   This logic is implemented in the PDP/8-X code
   that waits for the FPP to stop.
