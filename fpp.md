@@ -15,7 +15,14 @@ float machine, there is no support for integer arithmetic or
 for interrupts.  The FPP can cooperate closely with the CPU,
 because it shares the same memory, though not the same registers.
 
-It should be fairly easy to implement this architecture on a chip;d.
+It should be fairly easy to implement this architecture on a chip.
+
+## Issues
+
+There needs to be a way to stop the FPP when the CPU must service
+a device without using interrupts.
+The best idea so far is to have a line on the bus that a device
+signals if it is done and which the FPP monitors, forcing an FPHLT.
 
 ## Representation
 
@@ -197,10 +204,10 @@ other than those whose FOP value is 0x10 or 0x11.
    The assembler mnemonics are TRAP3 through TRAP7.
    
   By convention, when the CPU gets control
-  after a TRAP4, it issues a JMS to FY
-  and restarts the FPP after the JMS returns.
-  In case of a TRAP3, the CPU issues a JMP to
+  after a TRAP3, it issues a JMP to FY
   FY and does not automatically restart the FPP.
+  In case of a TRAP4, the CPU issues a JMS to FY
+  and restarts the FPP after the JMS returns.
   This logic is implemented in the PDP/8-X code
   that waits for the FPP to stop.
    `
