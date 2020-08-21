@@ -46,9 +46,9 @@ in this explanation; they may or may not correspond to actual registers:
   
   * The 32-bit FIR register
     contains the instruction currently being executed.
-    FIR is always treated as a bit vector.  
-    
-  * The 5-bit FOP (operation) register
+    FIR is always treated as a bit vector.
+        
+  * The 4-bit FOP (operation) register
     contains the bits of FIR used to specify
     the operation to be done.
   
@@ -71,15 +71,17 @@ Memory is measured in 32-bit words.
 It is organized into *pages* that are 2 KW in length.
 Page zero is not special to the FPP; its role is replaced by the
 *base page*, which is a 2KW page whose beginning is
-pointed to by FBASE.  There are also 15 indexed pages,
-whose beginnings are pointed to by the 15 words following
-where the FX0 register points (the word pointed to by FX0 itself
-is not available).  Neither the base page nor the indexed pages
-have to begin at a multiple of address 0x0000_0800.
+pointed to by FBASE.  The base page does not
+have to begin at a multiple of 0x800.
+
+There are also 16 index registers,
+which resided in memory starting at the address
+where the FX0 register points.
 
 We write M[x] to represent the contents of the word in memory
 whose address is x.  We write F[x] to represent M[x] when
-interpreted as a float.
+interpreted as a float.  We write I[x] to represent the
+contents of index register x; it is equivalent to M[FX0+x].
 
 ## Conversion
 
@@ -115,9 +117,8 @@ instructions are fetched, decoded, and executed as follows:
 
  * Set FIR to M[FPC].
    
- * Set FINC, FOP, FOPX, FIDX, and FOFF
-   to the 0x0002_0000, 0x0001_F000, 0x00F0_0000,
-   0x0F00_0000, and 0x0000_07FF
+ * Set FIDX, FOPX, FOP, and FOFF registers
+   to the 0x0F00_0000, 0x00F0_0000, 0x0001_F000, and 0x0000_07FF 
    bits of FIR respectively.
    
  * Set the 21 most significant bits of FY
@@ -142,27 +143,28 @@ the FBASE, FIDX, and FOFF registers.
 If the page bit is 0, then set FY to FBASE + FOFF,
 so that Y represents an address on the base page.
 
-If the page bit is 1 and FIDX is 0, then set FY to FY + FOFF,
+If the page bit is 1, then set FY to FY + FOFF,
 so that FY represents an address on the current page.
 
 If the page bit is 1 and FIDX is not 0,
-then check FINC, and if it is 1, increment
-M[M[FX0] + FIDX] by 1, ignoring any overflow.
-Then set FY to M[M[FX0]+FIDX] + FOFF,
-so that FY represents an address in one of the
-15 pages addressable by the in-memory index registers.
+then check the increment bit of FIR
+(the 0x0004_0000 bit) and if it is 1, increment
+I[FIDX] by 1, ignoring any overflow.
+In either case, set FY to FY + I[FIDX],
+so that FY is offset by one of the 16 (in-memory) index registers.
 
-If the 0x08 bit of FOP is 1, then set FY to M[FY].
-In addition, if FY = FPC, set FPC to FPC + 1, thus skipping
-M[FY] if it immediately follows the instruction.
+If the indirect bit (the 0x0002_0000 bit) of FIR 
+is 1, then set FY to M[FY].
+In addition, if FY = FPC, set FPC to FPC + 1 (ignoring any overflow),
+thus skipping M[FY] if it immediately follows the instruction.
 This is called *indirect addressing*.
 
-If the 0x08 bit of FOP is 0 it is called
+If the indirect bit of FOP is 0 it is called
 *direct addressing*, and no special action is taken.
 
 Any word in memory can be
 accessed indirectly, but only the 2KW of the base page
-the 15 index-accessible pages of 2KW each, and the 2KW of the current page
+and the 2KW of the current page, possibly extended by indexing, 
 can be accessed directly.
 
 ## Ordinary instructions
@@ -194,9 +196,8 @@ other than those whose FOP value is 0x10 or 0x11.
  * If FOP is 0x07 or 0x0F, then set F[Y] to FAC * F[FY].
    The assembler mnemonic is FMULM.
    
- * If FOP is 0x12, then check FINC.
-   If it is 1, then increment M[M[FX0] + FIDX] by 1, ignoring overflow.
-   In any case, if M[M[FX0] + FIDX] is 0 then set PC to Y.
+ * If FOP is 0x12, then set PC to Y.
+   The assembler mnemonic is JXN.
  
  * If FOP is 0x13 through 0x17,
    then set FST to 0x8, set FF to 1,
@@ -227,11 +228,11 @@ depend on FY, which therefore must not be computed.
  
  * If FOPX iz 0x2,
    set FAC to the integer value of FAC, and then
-   set M[M[FX0]+FIDX] to FAC.   
+   set I[FIDX] to FAC.   
    The assembler mnemonic is ATX.
    
  * If FOPX is 0x3,
-   set FAC to to M[M[FX0]+FIDX], and then
+   set FAC to to I[FIDX], and then
    set FAC to the float value of FAC.
   The assembler mnemonic is XTA.
  
@@ -240,13 +241,13 @@ depend on FY, which therefore must not be computed.
    The assembler mnemonic is FNOP.
  
  * If FOPX is 0x8,
-   set M[M[FX0]+FIDX] to M[FPC] and
-   then set FPC to FCP + 1, ignoring overflow.
+   set I[FIDX] to M[FPC] and
+   then set FPC to FPC + 1, ignoring overflow.
    The assembler mnemonic is LDX.
  
  * If FOPX is 0x9,
-   set M[M[FX0]+FIDX] to the sum
-   of M[M[FX0]+FIDX] and M[FPC];
+   set I[FIDX] to the sum
+   of I[FIDX] and M[FPC];
    then set FPC to FPC + 1, ignoring overflow.
    The assembler mnemonic is ADDX.
  
