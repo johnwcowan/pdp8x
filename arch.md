@@ -85,7 +85,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   * The 16-bit IMM register holds the most significant bits
     of the instruction currently being executed.
     
-  * The 4-bit OP register contains the 4 most significant bits of IR.
+  * The 3-bit OP register contains the 3 most significant bits of IR.
   
   * The 1-bit S register is 1 if the next instruction is going to be skipped
     (not executed) and 0 otherwise.
@@ -133,7 +133,7 @@ Instructions are fetched, decoded, and executed as follows:
  
  * Set IMM to the most significant halfword of M[PC].
    
- * Set OP to the 4 most significant bits of IR.
+ * Set OP to the 3 most significant bits of IR.
    
  * Set the 21 most significant bits of Y
    to the 21 most significant bits of PC,
@@ -150,7 +150,7 @@ Instructions are fetched, decoded, and executed as follows:
    
 ## Memory-referencing instructions
    
-If the value of OP is anything except 0x6, 0x7, 0xE, or 0xF,
+If the value of OP is anything except 0x6 or 0x7,
 IR contains a memory-referencing instruction (MRI), all of which have the same format.
 The Y register is set in a common way for all MRIs, and then the value of OP specifies
 exactly what to do with Y and the user-visible registers of the PDP-8/X.
@@ -161,42 +161,44 @@ If the page bit is 0, then the 21 most significant bits of Y are set to 0, so th
 Y represents an address on page zero.  If the page bit is 1, Y will represent an address
 on the current page, and no special action needs to be taken.
 
-Finally, the 11 least significant bits of IR are
+The 11 least significant bits of IR are
 copied to the 11 least significant bits of Y.
 
-If the most significant bit of OP is 1, then
+If the indirect bit (that is, the 0x1000 bit) of IR is 1,
 if Y is in the range 0000_0200 to 0000_02FF inclusive,
-set M[Y] to M[Y] + 1.  Then set Y to M[Y].
+set M[Y] to M[Y] + 1.  In any case set Y to M[Y].
 This is called *indirect addressing*.
 
-If the most significant bit of OP is 0, it is called
-*direct addressing*, and no special action is taken.  Any word in memory can be
+If the indirect bit is 0, nothing is done.
+This is called *direct addressing*
+
+Any word in memory can be
 accessed indirectly, but only the 2KW of page zero and the 2KW of the current page
 can be accessed directly.
 
 Then one of the following six cases is chosen:
 
- * If OP is 0x0 or 0x8, then set AC to AC bitwise-ANDed with M[Y].
+ * If OP is 0x0, then set AC to AC bitwise-ANDed with M[Y].
    The assembler mnemonic is AND.
  
- * If OP is 0x1 or 0x9, then set AC to the sum of AC and M[Y].  If
+ * If OP is 0x1, then set AC to the sum of AC and M[Y].  If
    there is an overflow out of AC as a result, then set L to 1 - L.
    The assembler mnemonic is, for historical reasons, TAD (two's
    complement add).
  
- * If OP is 0x2 or 0xA, then set M[Y] to AC, and then set AC to 0.
+ * If OP is 0x2, then set M[Y] to AC, and then set AC to 0.
    The assembler mnemonic is DCA (deposit and clear AC).
  
- * If OP is 0x3 or 0xB, then set M[Y] to M[Y] + 1; any overflow is ignored.
+ * If OP is 0x3, then set M[Y] to M[Y] + 1; any overflow is ignored.
    If M[Y] is now 0, then set S to 1.
    If PC is now greater than H, then set PC to 0.
    The assembler mnemonic is ISZ (increment and skip if zero).
  
- * If OP is 0x4 or 0xC, then set M[Y] to PC
+ * If OP is 0x4, then set M[Y] to PC
    and set PC to Y + 1.
    The assembler mnemonic is JMS (jump to subroutine).
  
- * If is 0x5 or 0xD, then set PC to Y .
+ * If OP is 0x5, then set PC to Y .
    The assembler mnemonic is JMP.
  
 ## I/O instructions
@@ -211,7 +213,8 @@ DOP to an undefined instruction, then no action is taken.
  
 ## Operate instructions
  
-If OP is 0x7 then various operations on AC, L, and/or MQ are
+If OP is 0x7 and the 0x1000 bit is 0,
+then various operations on AC, L, and/or MQ are
 performed depending on the bits of IR,
 which are examined in the order given below.
 Note that all applicable actions are taken, not just the first one.
@@ -293,7 +296,8 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
     
 ## Skip instructions
  
-If OP is 0xF, then S is set depending on various bits
+If OP is 0x7 and the 0x1000 bit of IR is 1,
+then S is set depending on various bits
 of IR, AC, and L.
 The bits of IR are examined in the order given below.
 Note that *all* applicable actions are taken, not just the first one.
@@ -320,8 +324,4 @@ Note that *all* applicable actions are taken, not just the first one.
    When the processor is restarted externally, all registers
    (user-visible and not) and all of memory are unchanged.
    The assembler mnemonic is HLT.
- 
-## Other instructions
 
-If OP is 0xE, no action is taken. All such instructions are reserved
-for possible future use.
