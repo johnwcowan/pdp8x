@@ -124,25 +124,26 @@ instructions are fetched, decoded, and executed as follows:
    Set FY to FBASE + the 11 least significant bits of IR.
    Set FG to 0.
    
- * If the page bit is 1
-   and the double-word bit (bit 0x0200) is 0,
-   this is a single-word instruction.
-   Set FOPX to the 0x00F0 bits of FIR.
-   Set FIDX to the 0x000F bits of FIR.
-   Set FY to 0.
+ * Otherwise,
+   if the double-word bit (the 0x0200 bit of IR) is 0,
+   then this is a single-word instruction:
+   set FY to 0.
+   But if the double-word bit is 1,
+   then this is a double-word instruction:
+   set FY to M[PC+1] and set FPC to FPC + 1.
+   In either case,
+   set FG to the 0x0400 bit of IR,
+   set FOPX to the 0x00F0 bits of FIR,
+   and set FIDX to the 0x000F bits of FIR,
 
- * If the page bit is 1 and the double-word bit is 1,
-   this is a double-word instruction.
-   Set FOPX to the 0x00F0 bits of FIR.
-   Set FIDX to the 0x000F bits of FIR.
-   Set FY to M[FPC+1].
-   Set FPC to FPC + 1, ignoring any overflow.
    
  * Set FPC to FPC + 1, ignoring any overflow.
    
  * If FPC is greater than H, set PC to 0.
       
 ## Memory references
+
+**Needs correction from here down.**
 
 Unlike the PDP-8/X, the FPP-8/X has very few
 instructions that do not reference memory, so
