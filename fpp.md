@@ -38,17 +38,19 @@ or as unsigned hexadecimal values starting with 0x.
 
 ## Registers
 
-The user-visible registers of a FPP-8/X are part of its
-device nature and are documented elsewhere.
+The user-visible registers of a FPP-8/X are
+FAPT, FPC, FX0, FBASE, FY, FAC, FST, and FF.
+They are visible to both the CPU and the FPP and are documented
+[elsewhere](devs.md).
 
 The following registers are not visible to programmers and are used
 in this explanation; they may or may not correspond to actual registers:
   
-  * The 32-bit FIR register
+  * The 16-bit FIR register
     contains the instruction currently being executed.
     FIR is always treated as a bit vector.
         
-  * The 4-bit FOP (operation) register
+  * The 3-bit FOP (operation) register
     contains the bits of FIR used to specify
     the operation to be done.
   
@@ -60,11 +62,8 @@ in this explanation; they may or may not correspond to actual registers:
     contains the bits of FIR used to specify the
     index register (if any) used by the current instruction.
     
-  * The 11-bit FOFF (offset) register
-    contains the bits of FIR used to specify the offset
-    from the base register, one of the index registers,
-    or the first instruction on the current page.
-               
+  * The 1-bit FG (group) register.
+
 ## Memory
    
 Memory is measured in 32-bit words.
@@ -115,15 +114,29 @@ the registers are initialized as follows:
 When the FPP starts running,
 instructions are fetched, decoded, and executed as follows:
 
- * Set FIR to M[FPC].
+ * Set FIR to the 16 least significant bits of M[FPC].
+
+ * Set FOP to the 3 most significant bits of FIR.
+
+ * Determine the format of the instruction in FIR.
+   If the page bit (bit 0x0800) is 0,
+   this is a base page instruction.
+   Set FY to FBASE + the 11 least significant bits of IR.
+   Set FG to 0.
    
- * Set FIDX, FOPX, FOP, and FOFF registers
-   to the 0x0F00_0000, 0x00F0_0000, 0x0001_F000, and 0x0000_07FF 
-   bits of FIR respectively.
-   
- * Set the 21 most significant bits of FY
-   to the 21 most significant bits of FPC,
-   and the 11 least significant bits of FY to 0.
+ * If the page bit is 1
+   and the double-word bit (bit 0x0200) is 0,
+   this is a single-word instruction.
+   Set FOPX to the 0x00F0 bits of FIR.
+   Set FIDX to the 0x000F bits of FIR.
+   Set FY to 0.
+
+ * If the page bit is 1 and the double-word bit is 1,
+   this is a double-word instruction.
+   Set FOPX to the 0x00F0 bits of FIR.
+   Set FIDX to the 0x000F bits of FIR.
+   Set FY to M[FPC+1].
+   Set FPC to FPC + 1, ignoring any overflow.
    
  * Set FPC to FPC + 1, ignoring any overflow.
    
@@ -172,28 +185,28 @@ can be accessed directly.
 This section describes how to interpret instructions
 other than those whose FOP value is 0x10 or 0x11.
 
- * If FOP is 0x00 or 0x08, then set FAC to F[FY].
+ * If FOP is 0x00, then set FAC to F[FY].
    The assembler mnemonic is FLDA.
  
- * If FOP is 0x01 or 0x09, then set FAC to FAC + F[FY].
+ * If FOP is 0x01, then set FAC to FAC + F[FY].
    The assembler mnemonic is FADD.
  
- * If FOP is 0x02 or 0x0A, then set FAC to FAC - F[FY].
+ * If FOP is 0x02, then set FAC to FAC - F[FY].
    The assembler mnemonic is FSUB.
  
- * If FOP is 0x03 or 0x0B, then set FAC to FAC / F[FY].
+ * If FOP is 0x03, then set FAC to FAC / F[FY].
    The assembler mnemonic is FDIV.
  
- * If FOP is 0x04 or 0x0C, then set FAC to FAC * F[FY].
+ * If FOP is 0x04, then set FAC to FAC * F[FY].
    The assembler mnemonic is FMUL.
  
- * If FOP is 0x05 or 0x0D, then set F[FY] to FAC + F[FY].
+ * If FOP is 0x05, then set F[FY] to FAC + F[FY].
    The assembler mnemonic is FADDM.
  
- * If FOP is 0x06 or 0x0E, then set F[Y] to FAC.
+ * If FOP is 0x06, then set F[Y] to FAC.
    The assembler mnemonic is FSTA.
  
- * If FOP is 0x07 or 0x0F, then set F[Y] to FAC * F[FY].
+ * If FOP is 0x07, then set F[Y] to FAC * F[FY].
    The assembler mnemonic is FMULM.
    
  * If FOP is 0x12, then set PC to Y.
