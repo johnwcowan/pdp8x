@@ -63,6 +63,8 @@ in this explanation; they may or may not correspond to actual registers:
     index register (if any) used by the current instruction.
     
   * The 1-bit FG (group) register.
+    FPP instructions are divided into group 0 and group 1,
+    and the FOP register has a different meaning depending on FG
 
 ## Memory
    
@@ -118,73 +120,46 @@ instructions are fetched, decoded, and executed as follows:
 
  * Set FOP to the 3 most significant bits of FIR.
 
+ * Set FPC to FPC + 1, ignoring any overflow.
+   
+ * If FPC is greater than H, set FPC to 0.
+      
  * Determine the format of the instruction in FIR.
    If the page bit (bit 0x0800) is 0,
    this is a base page instruction.
-   Set FY to FBASE + the 11 least significant bits of IR.
-   Set FG to 0.
-   
- * Otherwise,
-   if the double-word bit (the 0x0200 bit of IR) is 0,
-   then this is a single-word instruction:
-   set FY to 0.
-   But if the double-word bit is 1,
+   Set FY to FBASE + the 11 least significant bits of IR and
+   set FG to 0,
+   and skip the rest of this section.
+
+ * If the double-word bit (the 0x0200 bit of IR) is 0,
+   then this is a single-word instruction,
+   so set FY to 0.
+
+ * If the double-word bit is 1,
    then this is a double-word instruction:
-   set FY to M[PC+1] and set FPC to FPC + 1.
-   In either case,
-   set FG to the 0x0400 bit of IR,
-   set FOPX to the 0x00F0 bits of FIR,
-   and set FIDX to the 0x000F bits of FIR,
+   so set FY to M[FPC] and set FPC to FPC + 1,
+   ignoring any overflow.
+   Then if FPC > H, set FPC to 0.
 
+ *  In either case,
+   set FOPX to the 0x00F0 bits of FIR, and
+   set FIDX to the 0x000F bits of FIR, and
+   set FG to the group bit (0x0200 bit of FIR).
+
+ * If the indirect bit (the 0x1000 bit of FIR)
+   is 1, set Y to M[Y].
+
+ * If FIDX = 0, skip the rest of these instructions.
+
+ * If the increment bit (the 0x0100 bit of FIR)
+   is set, then set I[FIDX] to I[FIDX] + 1.
+
+ * Set Y to Y + I[FIDX].
    
- * Set FPC to FPC + 1, ignoring any overflow.
-   
- * If FPC is greater than H, set PC to 0.
-      
-## Memory references
-
-**Needs correction from here down.**
-
-Unlike the PDP-8/X, the FPP-8/X has very few
-instructions that do not reference memory, so
-the following steps are taken for all instructions
-except those where FOP = 0x10.
-
-The first step is to determine an initial value of FY,
-using the page bit of FIR (the 0x0000_0800 bit) and
-the FBASE, FIDX, and FOFF registers.
-
-If the page bit is 0, then set FY to FBASE + FOFF,
-so that Y represents an address on the base page.
-
-If the page bit is 1, then set FY to FY + FOFF,
-so that FY represents an address on the current page.
-
-If the page bit is 1 and FIDX is not 0,
-then check the increment bit of FIR
-(the 0x0004_0000 bit) and if it is 1, increment
-I[FIDX] by 1, ignoring any overflow.
-In either case, set FY to FY + I[FIDX],
-so that FY is offset by one of the 16 (in-memory) index registers.
-
-If the indirect bit (the 0x0002_0000 bit) of FIR 
-is 1, then set FY to M[FY].
-In addition, if FY = FPC, set FPC to FPC + 1 (ignoring any overflow),
-thus skipping M[FY] if it immediately follows the instruction.
-This is called *indirect addressing*.
-
-If the indirect bit of FOP is 0 it is called
-*direct addressing*, and no special action is taken.
-
-Any word in memory can be
-accessed indirectly, but only the 2KW of the base page
-and the 2KW of the current page, possibly extended by indexing, 
-can be accessed directly.
-
-## Ordinary instructions
+## Group 0 instructions
 
 This section describes how to interpret instructions
-other than those whose FOP value is 0x10 or 0x11.
+whose group bit is 0.
 
  * If FOP is 0x00, then set FAC to F[FY].
    The assembler mnemonic is FLDA.
@@ -209,24 +184,8 @@ other than those whose FOP value is 0x10 or 0x11.
  
  * If FOP is 0x07, then set F[Y] to FAC * F[FY].
    The assembler mnemonic is FMULM.
-   
- * If FOP is 0x12, then set PC to Y.
-   The assembler mnemonic is JXN.
- 
- * If FOP is 0x13 through 0x17,
-   then set FST to 0x8, set FF to 1,
-   and stop the instruction execution loop.
-   The assembler mnemonics are TRAP3 through TRAP7.
-   
-  By convention, when the CPU gets control
-  after a TRAP3, it issues a JMP to FY
-  FY and does not automatically restart the FPP.
-  In case of a TRAP4, the CPU issues a JMS to FY
-  and restarts the FPP after the JMS returns.
-  This logic is implemented in the PDP/8-X code
-  that waits for the FPP to stop.
-   `
-## Special instructions where FOP = 0x10
+
+## Group 1 instructions where FOP = 0x0
 
 Note that none of the following instructions
 depend on FY, which therefore must not be computed.
@@ -271,7 +230,7 @@ depend on FY, which therefore must not be computed.
  
 Otherwise do nothing.
 
-## Special instructions where FOP = 0x11
+## Group 1 instructions where FOP = 0x1
  
  * If FOPX is 0x0,
    then if FAC is zero then set FPC to FY;
@@ -332,6 +291,25 @@ Otherwise do nothing.
    and then set M[FY+1] to FPC + 1, ignoring overflow.
    Then set FPC to FY + 1, ignoring overflow.
    The assembler mnemonic is JSR.
+
+## Other group 1 instructions
+   
+ * If FOP is 0x12, then set FPC to FY.
+   The assembler mnemonic is JXN.
+ 
+ * If FOP is 0x13 through 0x17,
+   then set FST to 0x8, set FF to 1,
+   and stop the instruction execution loop.
+   The assembler mnemonics are TRAP3 through TRAP7.
+   
+  By convention, when the CPU gets control
+  after a TRAP3, it issues a JMP to FY
+  FY and does not automatically restart the FPP.
+  In case of a TRAP4, the CPU issues a JMS to FY
+  and restarts the FPP after the JMS returns.
+  This logic is implemented in the PDP/8-X code
+  that waits for the FPP to stop.
+   `
 
 Otherwise do nothing.
 
