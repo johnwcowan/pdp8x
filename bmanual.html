@@ -1,0 +1,1113 @@
+
+<!-- saved from url=(0048)https://www.bell-labs.com/usr/dmr/www/kbman.html -->
+<html><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<title>
+Thompson's B Manual
+</title></head>
+<body bgcolor="#FFFFFF" text="#000000" link="#0000FF" vlink="#330088" alink="#FF0044">
+<center><h2>Users' Reference to B
+</h2><br>
+<i>Ken Thompson
+<br>
+</i>
+<h4>ABSTRACT</h4></center>
+B is a computer language intended for
+recursive, primarily non-numeric applications
+typified by system programming.   B has a
+small, unrestrictive syntax that is easy to compile.
+Because of the unusual freedom of expression and
+a rich set of operators, B
+programs are often quite compact.
+<br> <br>
+This manual contains a concise definition of the language, sample
+programs, and instructions for using the PDP-11 version of B.
+
+<br> <br>
+<hr>
+[ <i>This is a rendition, after scanning, OCR, and editing,
+of an internal Bell Labs Technical Memorandum dated
+January 7, 1972. It is Ken's original manual for the B
+language on the PDP-11.  An
+<a href="https://www.bell-labs.com/usr/dmr/www/kbman.pdf">image</a> of the
+original document is available in PDF, but it is big:
+just under 1MB.
+<p>
+Nearby is <a href="https://www.bell-labs.com/usr/dmr/www/bintro.html">CSTR #8</a>,
+which is a report by Steve Johnson and Brian Kernighan describing
+the B implementation on Honeywell
+equipment.
+</p><p>
+The language being described was really the same, but it's interesting
+to look at the differences in description and environment.
+To describe the BNF syntax, Ken used a variant that depends
+on super- and subscripts to say "how many", which in the original
+were stacked above each other when they occurred simultaneously.
+This doesn't look too awful in the HTML rendering, but was probably
+better in the original.
+</p><p>
+The other thing that is observable is the degree to which the GCOS
+version had to struggle to work in that environment.
+Its library description is full of odd concepts like "the AFT"
+the *SRC file, and other peculiarities.
+</p></i><p><i>
+--DMR, July 1997</i> ]
+</p><hr>
+<h4>Introduction
+</h4>
+<br> <br>
+B is a computer language directly descendant from BCPL [1,2]. B
+1s running at Murray Hill on the DEC PDP-11 computer under the
+UNIX-11 time sharing system [3,4].  B is good for recursive,
+non-numeric, machine independent applications, such as system and
+language work.
+<br> <br>
+B, compared to BCPL, is syntactically rich in expressions and
+syntactically poor in statements.  A look at the examples in
+section 9 of this document will give a flavor of the language.
+<br> <br>
+B was designed and implemented by D. M. Ritchie and the author.
+<h4>Syntax
+</h4>
+<br> <br>
+The syntactic notation in this manual is basically BNF with the
+following exceptions:
+<dl compact="">
+<dt>1.</dt><dd>
+The metacharacters <tt>&lt;</tt> and <tt>&gt;</tt> are removed.   Literals are
+underlined [in typewriter font here -- DMR]
+to differentiate them from syntactic variables.
+</dd><dt>2.</dt><dd>
+The metacharacter <tt>|</tt> is removed.  Each syntactic alternative
+is placed on a separate line.
+</dd><dt>3.</dt><dd>
+The metacharacters <tt>{</tt> and <tt>}</tt> denote syntactic grouping.
+</dd><dt>4.</dt><dd>
+A syntactic group followed by numerical sub- and superscripts
+denote repetition of the group as follows:
+<dl><dt></dt><dd><tt><pre>	{..}<sub>m</sub>	m,m+1,...
+
+	{..}<sub>m</sub><sup>n</sup>	m,m+1,...,n
+</pre></tt></dd></dl>
+</dd></dl>
+<h4>Canonical Syntax
+</h4>
+<br> <br>
+The syntax given in this section defines all the legal constructions
+in B without specifying the association rules.  These are
+given later along with the semantic description of each construction.
+<dl><dt></dt><dd><tt><pre><i>program </i>::=
+	{definition}<sub>0</sub>
+
+definition ::=
+	name {<tt>[</tt><i> </i>{constant}<sub>0</sub><sup>1</sup> <tt>]</tt><i></i>}<sub>0</sub><sup>1</sup> {ival {<tt>,</tt><i> ival</i>}<sub>0</sub>}<sub>0</sub><sup>1</sup> <tt>;</tt><i>
+	name </i><tt>(</tt><i> </i>{name {<tt>,</tt><i> name</i>}<sub>0</sub>}<sub>0</sub><sup>1</sup> )<i> statement
+
+ival </i>::=
+	constant
+	name
+
+statement ::=
+	<tt>auto</tt><i> name </i>{constant}<sub>0</sub><sup>1</sup> {<tt>,</tt><i> name </i>{constant}<sub>0</sub><sup>1</sup>}<sub>0</sub> <tt>;</tt><i>  statement
+	</i><tt>extrn</tt><i> name </i>{<tt>,</tt><i> name</i>}<sub>0</sub> <tt>;</tt><i> statement
+	name </i><tt>:</tt><i> statement
+	<tt>case</tt> constant </i><tt>:</tt><i> statement
+	</i><tt>{</tt><i> </i>{statement}<sub>0</sub> <tt>}</tt><i>
+	</i><tt>if (</tt><i> rvalue </i><tt>)</tt><i> statement </i>{<tt>else</tt><i> statement</i>}<sub>0</sub><sup>1</sup>
+	<tt>while (</tt><i> rvalue </i><tt>)</tt><i> statement
+	</i><tt>switch</tt><i> rvalue statement
+	</i><tt>goto</tt><i> rvalue </i><tt>;</tt><i>
+	</i><tt>return</tt><i> </i>{<tt>(</tt><i> rvalue </i><tt>)</tt><i></i>}<sub>0</sub><sup>1</sup> <tt>;</tt><i>
+	</i>{rvalue}<sub>0</sub><sup>1</sup> <tt>;</tt><i>
+
+rvalue </i>::=
+	<tt>(</tt><i> rvalue </i><tt>)</tt><i>
+	lvalue
+	constant
+	lvalue assign rvalue
+	inc-dec lvalue
+	lvalue inc-dec
+	unary rvalue
+	</i><tt>&amp;</tt><i> lvalue
+	rvalue binary rvalue
+	rvalue </i><tt>?</tt><i> rvalue </i><tt>:</tt><i> rvalue
+	rvalue </i><tt>(</tt><i> </i>{rvalue {<tt>,</tt><i> rvalue</i>}<sub>0</sub> }<sub>0</sub><sup>1</sup> <tt>)</tt><i>
+
+assign </i>::=
+	= {binary}<sub>0</sub><sup>1</sup>
+
+inc-dec ::=
+	<tt>++</tt><i>
+	</i><tt>--</tt><i>
+	
+unary </i>::=
+	<tt>-</tt><i>
+	</i><tt>!</tt><i>
+
+binary </i>::=
+	<tt>|</tt><i>
+	</i><tt>&amp;</tt><i>
+	</i><tt>==</tt><i>
+	</i><tt>!=</tt><i>
+	</i><tt>&lt;</tt><i>
+	</i><tt>&lt;=</tt><i>
+	</i><tt>&gt;</tt><i>
+	</i><tt>&gt;=</tt><i>
+	</i><tt>&lt;&lt;</tt><i>
+	</i><tt>&gt;&gt;</tt><i>
+	</i><tt>-</tt><i>
+	</i><tt>+</tt><i>
+	</i><tt>%</tt><i>
+	</i><tt>*</tt><i>
+	</i><tt>/</tt><i>
+
+lvalue </i>::=
+	name
+	<tt>*</tt><i> rvalue
+	rvalue </i><tt>[</tt><i> rvalue </i><tt>]</tt><i>
+
+constant </i>::=
+	{digit}<sub>1</sub>
+	<tt>'</tt><i> </i>{char}<sub>1</sub><sup>2</sup> <tt>'</tt><i>
+	</i><tt>"</tt><i> </i>{char}<sub>0</sub> <tt>"</tt><i>
+
+name </i>::=
+	alpha {alpha-digit}<sub>0</sub><sup>7</sup>
+
+alpha-digit ::=
+	alpha
+	digit
+</pre></tt></dd></dl>
+<h4>Comments and Character Sets
+</h4>
+<br> <br>
+Comments are delimited as in PL/I by /* and */.
+<br> <br>
+In general, B requires tokens to be separated by blanks, comments
+or newlines, however the compiler infers separators surrounding
+any of the characters <tt>(){}[],;?:</tt> or surrounding any
+maximal sequence of the characters <tt>+-*/&lt;&gt;&amp;|!</tt>.
+<br> <br>
+The character set used in B is ANSCII.
+<br> <br>
+The syntactic variable 'alpha'  is not defined.  It represents the
+characters <tt>A</tt> to <tt>Z</tt>, <tt>a</tt> to <tt>z</tt>, <tt>_</tt>, and backspace.
+<br> <br>
+The syntactic variable 'digit' is not defined.  It represents the
+characters <tt>0</tt>, <tt>1</tt>, <tt>2</tt>, ... <tt>9</tt>.
+<br> <br>
+The syntactic variable 'char' is not defined.  It is essentially
+any character in the set plus the escape character <tt>*</tt> followed
+by another character to represent characters not easily
+represented in the set.  The following escape sequences are
+currently defined:
+<dl><dt></dt><dd><tt><pre>	<tt>*0</tt><i>	null
+	</i><tt>*e</tt><i>	end-of-file
+	</i><tt>*(</tt><i>	</i><tt>{</tt>
+	<tt>*)</tt><i>	</i><tt>}</tt>
+	<tt>*t</tt><i>	tab
+	</i><tt>**</tt><i>	</i><tt>*</tt>
+	<tt>*'</tt><i>	</i><tt>'</tt>
+	<tt>*"</tt><i>	</i><tt>"</tt>
+	<tt>*n</tt><i>	new line
+</i></pre></tt></dd></dl><i>
+All keywords in the language are only recognized in lower case.
+Keywords are reserved.
+</i><h4>3.0 values and Lvalues
+</h4>
+<br> <br>
+An rvalue is a binary bit pattern of a fixed length.  On the
+PDP-11 it is 16 bits.  Objects are rvalues of different kinds
+such as integers, labels, vectors and functions.  The actual kind
+of object represented is called the type of the rvalue.
+<br> <br>
+A B expression can be evaluated to yield an rvalue, but its type
+is undefined until the rvalue is used in some context.   It is
+then assumed to represent an object of the required type.  For
+example, in the following function call
+<dl><dt></dt><dd><tt><pre>	(b? f:g[i] )(1, x&gt;1)
+</pre></tt></dd></dl>
+The expression (b?f:g[i]) is evaluated to yield an rvalue which
+is interpreted to be of type function.  Whether f and g[i] are in
+fact functions is not checked.  Similarly, b is assumed to be of
+type truth value, x to be type integer etc.
+<br> <br>
+There is no check to insure that here are no type mismatches.
+Similarly, there are no wanted, or unwanted, type conversions.
+<br> <br>
+An lvalue is a bit pattern representing a storage location
+containing an rvalue.  An lvalue is a type in B.  The unary operator
+* can be used to interpret an rvalue as an lvalue. Thus
+<dl><dt></dt><dd><tt><pre>	*X
+</pre></tt></dd></dl>
+evaluates the
+expression x to yield an rvalue, which is then
+interpreted as an lvalue.  If it is then used in an rvalue context,
+the application of <tt>*</tt> yields the rvalue therein stored.   The
+operator <tt>*</tt> can be thought of as indirection.
+<br> <br>
+The unary operator <tt>&amp;</tt> can be used to interpret an lvalue as an
+rvalue. Thus
+<dl><dt></dt><dd><tt><pre>	&amp;x
+</pre></tt></dd></dl>
+evaluates the expression x as an lvalue.  The application of <tt>&amp;</tt>
+then yields the lvalue as an rvalue.  The operator <tt>&amp;</tt> can therefore
+be thought of as the address function.
+<br> <br>
+The names lvalue and rvalue come from the assignment statement
+which requires an lvalue on the left and an rvalue on the right.
+<h4>4.0 Expression Evaluation
+</h4>
+<br> <br>
+Binding of expressions (lvalues and rvalues) is in the same order
+as the sub-sections of this section except as noted.
+Thus expressions referred to as operands of <tt>+</tt> (section 4.4)
+are expressions defined in sections 4.1 to 4.3.
+The binding of operators at the same level
+(left to right, right to left) is specified in each sub-section.
+<h4>4.1 Primary Expressions
+</h4>
+<dl compact="">
+<dt>1.</dt><dd>
+A name is an lvalue of one of three storage classes (automatic,  external and internal).
+</dd><dt>2.</dt><dd>
+A decimal constant is an rvalue.
+It consists of a digit
+between 1 and 9 followed
+by any number of digits between O
+and 9.   The value of the
+constant should not exceed the
+maximum value that can be stored in an object.
+</dd><dt>4.</dt><dd>
+An octal constant is the same as a decimal constant except
+that it begins with a zero.  It is then interpreted in base
+8.  Note that 09 (base 8) is legal and equal to 011.
+A character constant is represented by <tt>'</tt> followed by one or
+two characters (possibly escaped) followed by another <tt>'</tt>.
+It has an rvalue equal to the value of the characters
+packed and right adjusted.
+</dd><dt>5.</dt><dd>
+A string is any number of characters between <tt>"</tt> characters.
+The characters are packed into adjacent objects (lvalues
+sequential) and terminated with the character '*e'.   The
+rvalue of the string is the lvalue of the object containing
+the first character.  See section 8.0 for library functions
+used to manipulate strings in a machine independent
+fashion.
+</dd><dt>6.</dt><dd>
+Any expression in () parentheses is a primary expression.
+Parentheses are used to alter order of binding.
+</dd><dt>7.</dt><dd>
+A vector is a primary expression followed by any expression
+in [] brackets.  The two expressions are evaluated to
+rvalues, added and the result is used as an lvalue.  The
+primary expression can be thought of as a pointer to the
+base of a vector, while the bracketed expression can be
+thought of as the offset in the vector.  Since E1[E2] is
+identical to *(E1+E2), and addition is commutative, the
+base of the vector and the offset in the vector can swap
+positions.
+</dd><dt>8.</dt><dd>
+A function is a primary expression followed by any number
+of expressions in <tt>()</tt> parentheses separated by commas.   The
+expressions In parentheses are evaluated (in an unspecified
+order) to rvalues and assigned to the function's parameters.
+The primary expression is evaluated to an rvalue
+(assumed to be type function). The function is then
+called.  Each call is recursive at little cost in time or
+space.
+</dd><dt></dt><dt> </dt><dd>
+Primary expressions are bound left to right.
+
+</dd></dl>
+<h4>4.2 Unary Operators
+</h4>
+<br> <br>
+<dl compact="">
+<dt>1.</dt><dd>
+The rvalue (or indirection) prefix unary operator <tt>*</tt> is
+described in section 3.0.  Its operand is evaluated to
+rvalue, and then used as an lvalue.
+In this manner, address arithmetic may be performed.
+</dd><dt>2.</dt><dd>
+The lvalue (or address) prefix unary operator &amp; is also
+described in section 3.0.   Note that
+&amp;*x is identically x,
+but *&amp;x is only x if x is an lvalue.
+</dd><dt>3.</dt><dd>
+The operand of the negate prefix unary operator - is interpreted
+as an integer rvalue.  The result is an rvalue with
+opposite sign.
+</dd><dt>4.</dt><dd>
+The NOT prefix unary operator ! takes an integer rvalue
+operand.  The result is zero if the operand is non-zero.
+The result is one if the operand is zero.
+</dd><dt>5.</dt><dd>
+The increment <tt>++</tt> and decrement <tt>--</tt> unary operators may be
+used either in prefix or postfix form.
+Either form requires an lvalue operand.  The rvalue stored in the lvalue
+is either incremented or decremented by one.  The result is
+the rvalue either before or after the operation depending
+on postfix or prefix notation respectively.  Thus if x
+currently contains the rvalue 5, then ++x and x++ both
+change x to 6.  The value of ++x is 6 while x++ is 5.
+</dd><dt></dt><dt> </dt><dd>
+Similarly, --x and x-- store 4 in X.  The former has rvalue
+result 4,  the latter 5.
+</dd></dl>
+<br> <br>
+Unary operators are bound right to left.  Thus -!x++ is bound
+-(!(x++)).
+<h4>4.3 Multiplicative Operators
+</h4>
+<br> <br>
+The multiplicative binary operators <tt>*</tt>, <tt>/</tt>, and <tt>%</tt>, expect rvalue
+integer operands.  The result is also an integer.
+<dl compact="">
+<dt>1.</dt><dd>
+The operator * denotes multiplication.
+</dd><dt>2.</dt><dd>
+The operator <tt>/</tt> denotes division.  The result is correct if
+the first operand is divisible by the second.
+If both operands are positive, the result is truncated
+toward zero.
+Otherwise the rounding is undefined, but never
+greater than one.
+</dd><dt>3.</dt><dd>
+The operator <tt>%</tt> denotes modulo.  If both operands are positive,
+the result is correct.   It is undefined otherwise.
+</dd></dl>
+<br> <br>
+The multiplicative operators bind left to right.
+<h4>4.4 Additive Operators
+</h4>
+<br> <br>
+The binary operators <tt>+</tt> and <tt>-</tt> are add and subtract.
+The additive
+operators bind left to right.
+<h4>Shift Operators
+</h4>
+<br> <br>
+The binary operators
+<tt>&lt;&lt;</tt> and <tt>&gt;&gt;</tt> are left and right shift respectively.
+The left rvalue operand is taken as a bit pattern.
+The right operand is taken as an integer shift count.
+The result is the bit pattern shifted by the shift count.
+Vacated bits are
+filled with zeros.  The result is undefined if the shift count
+negative or larger than an object length.  The shift operators
+bind left to right.
+<h4>4.6 Relational Operators
+</h4>
+<br> <br>
+The relational operators <tt>&lt;</tt> (less than), <tt>&lt;=</tt> (less than or equal
+to), <tt>&gt;</tt> (greater than), and <tt>&gt;=</tt> ( greater than or equal to) take
+integer rvalue operands.  The result is one if the operands are
+in the given relation to one another.  The result is zero otherwise.
+<h4>4.7 Equality Operators
+</h4>
+<br> <br>
+The equality operators <tt>==</tt> (equal to) and <tt>!=</tt> (not equal to)
+perform similarly to the relation operators.
+<h4>4.8  AND operator
+</h4>
+<br> <br>
+The AND operator <tt>&amp;</tt> takes operands as bit patterns.  The result is
+the bit pattern that is the bit-wise AND of the operands.   The
+operator binds and evaluates left to right.
+<h4>The OR operator
+</h4>
+<br> <br>
+The OR operator <tt></tt>| performs exactly as AND, but the result is the
+bit-wise inclusive OR of the operands.  The OR operator also
+binds and evaluates left to right.
+<h4>4.10 Conditional Expression
+</h4>
+<br> <br>
+Three rvalue expressions separated by <tt>?</tt> and <tt>:</tt> form a conditional
+expression.  The first expression (to the left of the ?) is
+evaluated.  If the result is non-zero,  the second expression is
+evaluated and the third ignored.  If the value is zero, the
+second expression is ignored and the third is evaluated.   The
+result is either the evaluation of the second or third expression.
+<br> <br>
+Binding is right to left. Thus a?b:c?d:e is a?b:(c?d:e).
+<h4>4.11 Assignment Operators
+</h4>
+<br> <br>
+There are 16 assignment operators in B.  All have the form
+<dl><dt></dt><dd><tt><pre>	lvalue op rvalue
+</pre></tt></dd></dl>
+The assignment operator
+= merely evaluates the rvalue and stores
+the result in the lvalue.  The assignment operators <tt>=|</tt>, <tt>=&amp;</tt>, <tt>===</tt>,
+<tt>=|=</tt>, <tt>=&lt;</tt>, <tt>=&lt;=</tt>, <tt>=&gt;</tt>, <tt>=&gt;=</tt>, <tt>=&lt;&lt;</tt>, <tt>=&gt;&gt;</tt>, <tt>=+</tt>, <tt>=-</tt>, <tt>=%</tt>, <tt>=*</tt>, and <tt>=/</tt> perform a
+binary operation (see sections 4.3 to 4.9) between the rvalue
+stored in the assignment's lvalue and the assignment's rvalue.
+The result is then stored in the lvalue.  The expression x=*10 is
+identical to x=x*10.  Note that this is not x= *10.  The result
+of an assignment is the rvalue.  Assignments bind right to left,
+thus x=y=0 assigns zero to y, then x, and returns the rvalue
+zero.
+<h4>5.0 Statements
+</h4>
+<br> <br>
+Statements define program execution.   Each statement is executed
+by the computer in sequence. There are, of course, statements to
+conditionally or unconditionally alter normal sequencing.
+<h4>5.1 Compound Statement
+</h4>
+<br> <br>
+A sequence of statements in <tt>{}</tt> braces is syntactically a single
+statement.  This mechanism is provided so that where a single
+statement is expected, any number of statements can be placed.
+<h4>5.1 Conditional Statement
+</h4>
+<br> <br>
+A conditional statement has two forms. The first:
+<dl><dt></dt><dd><tt><pre>	if(rvalue) statement<sub>1</sub>
+</pre></tt></dd></dl>
+evaluates the rvalue and executes statement<sub>1</sub>, if the rvalue is
+non-zero.  If the rvalue is zero, statement<sub>1</sub> is skipped.   The
+second form:
+<dl><dt></dt><dd><tt><pre>	if(rvalue) statement<sub>1</sub> else statement<sub>2</sub>
+</pre></tt></dd></dl>
+is defined as follows in terms of the first form:
+<dl><dt></dt><dd><tt><pre>	if(x=(rvalue)) statement<sub>1</sub> if(!x) statement<sub>2</sub>
+</pre></tt></dd></dl>
+Thus, only one of the two statements is executed, depending on
+the value of rvalue.  In the above example,
+x is not a real variable, but just a demonstration aid.
+<h4>5.3 While Statement
+</h4>
+<br> <br>
+The while statement has the form:
+<dl><dt></dt><dd><tt><pre>	while(rvalue) statement
+</pre></tt></dd></dl>
+The execution is described in terms of the conditional and goto
+statements as follows:
+<dl><dt></dt><dd><tt><pre>	x: if(rvalue) { statement goto x; ]
+</pre></tt></dd></dl>
+Thus the statement is executed repeatedly while the rvalue is
+non-zero.  Again, x is a demonstration aid.
+<h4>5.4 Switch Statement
+</h4>
+<br> <br>
+The switch statement is the most complicated
+statement in B.  The
+switch has the form:
+<dl><dt></dt><dd><tt><pre>	switch rvalue statement<sub>1</sub>
+</pre></tt></dd></dl>
+Virtually always, statement<sub>1</sub> above is a compound statement.   Each
+statement in statement<sub>1</sub> may be preceded by a case as follows:
+<dl><dt></dt><dd><tt><pre>	case constant:
+</pre></tt></dd></dl>
+During execution, the rvalue is evaluated and compared to each
+case constant in undefined order.  If a case constant is equal to
+the evaluated rvalue, control is passed to the statement following
+the case.  If the rvalue matches none of the cases, statement<sub>1</sub>
+is skipped.
+<h4>5.5 Goto Statement
+</h4>
+<br> <br>
+The goto statement is as follows:
+<dl><dt></dt><dd><tt><pre>	goto rvalue ;
+</pre></tt></dd></dl>
+The rvalue is expected to be of type label.  Control is then
+passed to the corresponding label.  Goto's cannot be executed to
+labels outside the currently executing function level.
+<h4>5.6 Return Statement
+</h4>
+<br> <br>
+The return statement is used in a function to return control to
+the caller of a function.  The first form simply returns control.
+<dl><dt></dt><dd><tt><pre>	return ;
+</pre></tt></dd></dl>
+The second form returns an rvalue for the execution of the function.
+<dl><dt></dt><dd><tt><pre>	return ( rvalue ) ;
+</pre></tt></dd></dl>
+The caller of the function need not use the returned rvalue.
+<h4>3.7 Rvalue Statement
+</h4>
+<br> <br>
+Any rvalue followed by a semicolon is a statement.   The two most
+common rvalue statements are assignment and function call.
+<h4>5.8 Null Statement
+</h4>
+<br> <br>
+A semicolon is a null statement causing no execution.   It is used
+mainly to carry a label after the last executable statement in a
+compound statement.  It sometimes has use to supply a null body
+to a while statement.
+<h4>6.0 Declarations
+</h4>
+<br> <br>
+Declarations in B specify storage class
+of variables. Such declarations also, in some circumstances,
+specify initialization.
+<br> <br>
+There are
+three storage
+classes in B.  Automatic storage is allocated for
+each function
+invocation.  External storage is allocated before
+execution and
+is available to any and all functions.
+Internal storage is local to a function and is available only to
+that function,  but is available to all invocations of that function.
+<h4>6.1 External Declaration
+</h4>
+<br> <br>
+The external declaration has the form:
+<dl><dt></dt><dd><tt><pre>	extrn name<sub>1</sub> , name<sub>2</sub> ... ;
+</pre></tt></dd></dl>
+The external declaration specifies that each of
+the named variables is of the external storage class.
+The declaration must
+occur before the first use of each of the variables.   Each of the
+variables must also be externally defined.
+<h4>6/2  Automatic Declaration
+</h4>
+<br> <br>
+The automatic declaration also constitutes a definition:
+<dl><dt></dt><dd><tt><pre>	auto name<sub>1</sub> {constant}<sub>0</sub><sup>1</sup> , name<sub>2</sub> {constant]<sub>0</sub><sup>1</sup> ... ;
+</pre></tt></dd></dl>
+In absence of the constant,  the automatic declaration defines the
+variable to be of class automatic.  At the same time, storage is
+allocated for the variable.  When an automatic declaration is
+followed by a constant,  the automatic variable is
+also initialized to the base of an automatic vector
+of the size of the constant.
+The actual subscripts used to reference the vector range
+from zero to the value of the constant less one.
+<h4>6.3 Internal Declaration
+</h4>
+<br> <br>
+The first reference to a variable not declared as external or
+automatic constitutes an internal declaration,  All internal
+variables not defined as labels are flagged as undefined within a
+function.  Labels are defined and initialized as follows:
+<dl><dt></dt><dd><tt><pre>	name :
+</pre></tt></dd></dl>
+<h4>7.0 External Definitions
+</h4>
+<br> <br>
+A complete B program consists of a series of external definitions.
+Execution is started by the hidden sequence
+<dl><dt></dt><dd><tt><pre>	main(); exit();
+</pre></tt></dd></dl>
+Thus, it is expected that one of the external definitions is a
+function definition of main. (Exit is a predefined library function.
+See section 8.0)
+<h4>7.1 Simple Definition
+</h4>
+<br> <br>
+The simple external definition allocates an external object and
+optionally initializes it:
+<dl><dt></dt><dd><tt><pre>	name {ival , ival ...}<sub>0</sub> ;
+</pre></tt></dd></dl>
+If the external object is defined with no initialization, it is
+initialized with zero.  A single initialization with a constant
+initializes the external with the value of the constant.
+Initialization with a name initializes the external to the address of
+that name.  Many such initializations may be accessed as a vector
+based at &amp;name.
+<h4>7.2 Vector Definitions
+</h4>
+<br> <br>
+An external vector definition has the following form:
+<dl><dt></dt><dd><tt><pre>	name [ {constant}<sub>0</sub><sup>1</sup> ] {ival , ival ...}<sub>0</sub> ;
+</pre></tt></dd></dl>
+The name is initialized with the lvalue of the base of
+an external vector.  If the vector size is missing, zero is assumed. In
+either case,  the vector is initialized with the list of initial
+values.  Each initial value is either a constant or a name. A
+constant initial value initializes the vector element to the
+value of the constant.  The name initializes the element to the
+address of the name.  The actual size
+is the maximum of the given size and the number of initial values.
+<h4>7.3 Function Definitions
+</h4>
+<br> <br>
+Function definitions have the following form:
+<dl><dt></dt><dd><tt><pre>	name ( arguments ) statement
+</pre></tt></dd></dl>
+The name is initialized to the rvalue of the function.
+The arguments consist of a list of names separated by commas.
+Each name defines an automatic lvalue that is assigned the rvalue of the
+corresponding function call actual parameters.   The statement
+(often compound) defines the execution of the function when invoked.
+<h4>8.0 Library Functions
+</h4>
+<br> <br>
+There is a library of B functions maintained in the file
+/etc/libb.a.  The following is a list of those functions
+currently in the library.  See section II of [4]
+for complete descriptions of the functions marked with an *.
+<dl compact="">
+<dt>c = char(string, i);</dt><dd>
+<br>
+The i-th character of the string is returned.
+</dd><dt>error = chdir(string) ;</dt><dd>
+<br>
+The path name represented by the string becomes
+the current directory.
+A negative number returned indicates an error.
+</dd><dt>error = chmod(string, mode);</dt><dd>
+<br>
+The file specified by the string has its mode changed to
+  the mode argument.  A negative number returned indicates an
+   error.  (*)
+</dd><dt>error = chown(string, owner);</dt><dd>
+<br>
+The file specified by the string has its owner changed to
+the owner argument.  A negative number returned indicates
+an error.  (*)
+</dd><dt>error = close(file) ;</dt><dd>
+<br>
+The open file specified by the file argument is closed. A
+negative number returned indicates an error.  (*)
+</dd><dt>file = creat(string, mode);</dt><dd>
+<br>
+The file specified by the string is either truncated or
+created in the mode specified depending on its prior existence.
+In both cases, the file is opened for writing and a
+file descriptor is returned.  A negative number returned
+indicates an error.  (*)
+</dd><dt>ctime(time, date);</dt><dd>
+<br>
+The system time (60-ths of a second) represented in the
+two-word vector time is converted to a 16-character date in
+the 8-word vector date.  The converted date has the following format:
+"Mmm dd hh:mm:ss".
+</dd><dt>execl(string, arg0, arg1, ..., 0);</dt><dd>
+<br>
+The current process is replaced by the execution of the
+file specified by string.  The arg-i strings are passed as
+arguments.  A return indicates an error.  (*)
+</dd><dt>execv(string, argv, count);</dt><dd>
+<br>
+The current process is replaced by the execution of the
+file specified by string.  The vector of strings of length
+count are passed as arguments.   A return indicates an error. (*)
+</dd><dt>exit( ) ;</dt><dd>
+<br>
+The current process is terminated.  (*)
+</dd><dt>error = fork( ) ;</dt><dd>
+<br>
+The current process splits into two.  The child process is
+returned a zero.  The parent process is returned the process ID of
+the child.  A negative number returned indicates
+an error.  (*)
+</dd><dt>error = fstat(file, status);</dt><dd>
+<br>
+The i-node of the open file designated by file is put in
+the 20-word vector status.  A negative number returned
+indicates an error.  (*)
+</dd><dt>char = getchar( ) ;</dt><dd>
+The next character form the standard input file is returned.
+The character `*e' is returned for an end-of-file.
+</dd><dt>id = getuid();</dt><dd>
+<br>
+The user-ID of the current process is returned.  (*)
+</dd><dt>error = gtty(file, ttystat);</dt><dd>
+<br>
+The teletype modes of the open file designated by file is
+returned in the 3-word vector ttstat.  A negative number
+returned indicates an error. (*)
+</dd><dt>lchar(string, i, char);</dt><dd>
+<br>
+The character char is stored in the i-th character of the
+string.
+</dd><dt>error = link(string1, string2);</dt><dd>
+<br>
+The pathname specified by string2 is created such that it
+is a link to the existing file specified by string1. A
+negative number returned indicates an error.  (*)
+</dd><dt>error = mkdir(string, mode);</dt><dd>
+<br>
+The directory specified by the string is made to exist with
+the specified access mode.  A negative number returned
+indicates an error.  (*)
+</dd><dt>file = open(string, mode);</dt><dd>
+<br>
+The file specified by the string is opened for reading if
+mode is zero, for writing if mode is not zero.  The open
+file designator is returned.  A negative number returned
+indicates an error.  (*)
+</dd><dt>printf(format, argl, ...);</dt><dd>
+<br>
+See section 9.3 below.
+</dd><dt>printn(number, base);</dt><dd>
+<br>
+See section 9.1 below.
+</dd><dt>putchar(char) ;</dt><dd>
+<br>
+The character char is written on the standard output file.
+</dd><dt>nread = read(file, buffer, count);</dt><dd>
+<br>
+Count bytes are read into the vector buffer from the open
+file designated by file.  The actual number of bytes read
+are returned.  A negative number returned indicates an
+error.  (*)
+</dd><dt>error = seek(filet offset, pointer);</dt><dd>
+<br>
+The I/O pointer on the open file designated by file is set
+to the value of the designated pointer plus the offset. A
+pointer of zero designates the beginning of the file. A
+pointer of one designates the current I/O pointer. A
+pointer of two designates the end of the file. A negative
+number returned indicates an error.  (*)
+</dd><dt>error = setuid(id);</dt><dd>
+<br>
+The user-ID of the current process is set to id.
+A negative number returned indicates an error.  (*)
+</dd><dt>error = stat(string, status);</dt><dd>
+<br>
+The i-node of the file specified by the string is put in
+the 20-word vector status.  A negative number returned
+indicates an error.  (*)
+</dd><dt>error = stty(file, ttystat);</dt><dd>
+<br>
+The teletype modes of the open file designated by file is
+set from the 3-word vector ttystat.  A negative number
+returned indicates an error.  (*)
+</dd><dt>time(timev);</dt><dd>
+<br>
+The current system time is returned in the 2-word vector
+timev. (*)
+</dd><dt>error = unlink(string);</dt><dd>
+<br>
+The link specified by the string is removed.  A negative
+number returned indicates an error.  (*)
+</dd><dt>error = wait( );</dt><dd>
+<br>
+The current process is suspended until one of its child
+processes terminates. At that time, the child's process-ID
+is returned.  A negative number returned indicates an error. (*)
+</dd><dt>nwrite = write(file, buffer, count);</dt><dd>
+<br>
+Count bytes are written out of the vector buffer on the
+open file designated by file.  The actual number of bytes
+written are returned.  A negative number returned indicates
+an error.  (*)
+</dd></dl>
+<br> <br>
+Besides the functions available from the library, there is a
+predefined external vector named argv included with every program.
+The size of argv is argv[0]+1.
+The elements
+argv[1]...argv[argv[0]] are the parameter strings as passed by
+the system in the execution of the current process.  (See shell
+in II of [4])
+<h4>9.0 Examples
+</h4>
+<br> <br>
+The examples appear exactly as given to B.
+<h4>9.1
+</h4>
+<br> <br>
+<dl><dt></dt><dd><tt><pre>/* The following function will print a non-negative number, n, to
+  the base b, where 2&lt;=b&lt;=10,  This routine uses the fact that
+  in the ANSCII character set, the digits O to 9 have sequential
+  code values.  */
+
+printn(n,b) {
+	extrn putchar;
+	auto a;
+
+	if(a=n/b) /* assignment, not test for equality */
+		printn(a, b); /* recursive */
+	putchar(n%b + '0');
+}
+</pre></tt></dd></dl>
+<h4>9.2
+</h4>
+<br> <br>
+<dl><dt></dt><dd><tt><pre>/* The following program will calculate the constant e-2 to about
+   4000 decimal digits, and print it 50 characters to the line in
+   groups of 5 characters.  The method is simple output conversion
+   of the expansion
+     1/2! + 1/3! + ... = .111....
+   where the bases of the digits are 2, 3, 4, . . . */
+
+main() {
+	extrn putchar, n, v;
+	auto i, c, col, a;
+
+	i = col = 0;
+	while(i&lt;n)
+		v[i++] = 1;
+	while(col&lt;2*n) {
+		a = n+1 ;
+		c = i = 0;
+		while (i&lt;n) {
+			c =+ v[i] *10;
+			v[i++]  = c%a;
+			c =/ a--;
+		}
+
+		putchar(c+'0');
+		if(!(++col%5))
+			putchar(col%50?' ': '*n');
+	}
+	putchar('*n*n');
+}
+
+v[2000];
+n 2000;
+</pre></tt></dd></dl>
+<h4>9.3
+</h4>
+<br> <br>
+<dl><dt></dt><dd><tt><pre>/* The following function is a general formatting, printing, and
+   conversion subroutine.  The first argument is a format string.
+   Character sequences of the form `%x' are interpreted and cause
+   conversion of type 'x' of the next argument, other character
+   sequences are printed verbatim.   Thus
+
+    printf("delta is %d*n", delta);
+
+    will convert the variable delta to decimal (%d) and print the
+    string with the converted form of delta in place of %d.   The
+    conversions %d-decimal, %o-octal, *s-string and %c-character
+    are allowed.
+
+    This program calls upon the function `printn'. (see section
+    9.1) */
+
+printf(fmt, x1,x2,x3,x4,x5,x6,x7,x8,x9) {
+	extrn printn, char, putchar;
+	auto adx, x, c, i, j;
+
+	i= 0;	/* fmt index */
+	adx = &amp;x1;	/* argument pointer */
+loop :
+	while((c=char(fmt,i++) ) != `%') {
+		if(c == `*e')
+			return;
+		putchar(c);
+	}
+	x = *adx++;
+	switch c = char(fmt,i++) {
+
+	case `d': /* decimal */
+	case `o': /* octal */
+		if(x &lt; O) {
+			x = -x ;
+			putchar('-');
+		}
+		printn(x, c=='o'?8:1O);
+		goto loop;
+
+	case 'c' : /* char */
+		putchar(x);
+		goto loop;
+
+	case 's': /* string */
+		while(c=char(x, j++)) != '*e')
+			putchar(c);
+		goto loop;
+	}
+	putchar('%') ;
+	i--;
+	adx--;
+	goto loop;
+}
+</pre></tt></dd></dl>
+<h4>10.0 Usage
+</h4>
+<br> <br>
+Currently on UNIX,  there is no B command.  The B compiler phases
+must be executed piecemeal.  The first phase turns a B source
+program into an intermediate language.
+<dl><dt></dt><dd><tt><pre>/etc/bc source interm
+</pre></tt></dd></dl>
+The next phase turns the intermediate language into assembler
+source, at which time the intermediate language can be removed.
+<dl><dt></dt><dd><tt><pre>/etc/ba interm asource
+rm interm
+</pre></tt></dd></dl>
+The next phase assembles the assembler source into the object
+file a.out.  After this the a.out file can be renamed and the
+assembler source file can be removed.
+<dl><dt></dt><dd><tt><pre>as asource
+mv a.out object
+rm asource
+</pre></tt></dd></dl>
+The last phase loads the various object files with the necessary
+libraries in the desired order.
+<dl><dt></dt><dd><tt><pre>ld object /etc/brt1 -lb /etc/bilib /etc/brt2
+</pre></tt></dd></dl>
+Now a.out contains the completely bound and loaded program and
+can be executed.
+<dl><dt></dt><dd><tt><pre>a.out
+</pre></tt></dd></dl>
+A canned sequence of shell commands exists invoked as follows:
+<dl><dt></dt><dd><tt><pre>sh /usr/b/rc x
+</pre></tt></dd></dl>
+It will compile, convert, assemble and load the file x.b into the
+executable file a.out.
+<h4>12.0 Implementation and Debugging
+</h4>
+<br> <br>
+A B program is implemented as a reverse Polish threaded code
+interpreter: The object code consists of a series of addresses of
+interpreter subroutines.  Machine register 3 is dedicated as the
+interpreter program counter.  Machine register 4 is dedicated as
+the interpreter display pointer.  The display pointer points to
+the base of the current stack frame.  The first word of each
+stack frame is a pointer to the previous stack frame (prior
+display pointer.) The second word in each frame is is the saved
+interpreter program counter (return point of the call creating
+the frame.) Automatic variables start at the third word of each
+frame.  Machine register 5 is dedicated as the interpreter stack
+pointer.  The machine stack pointer plays no role in the interpretation.
+An example source code segment, object code and
+interpreter subroutines follow:
+<dl><dt></dt><dd><tt><pre>	automatic = external + 100.;
+	va; 4		/ lvalue of first automatic on stack
+	x; .external	/ rvalue of external on stack
+	c; 100.		/ rvalue of constant on stack
+	b12		/ binary operator #12 (+)
+	b1		/ binary operator #1 (=)
+	...
+va:
+	mov	(r3)+,r0
+	add	r4,rO		/ dp+offset of automatic
+	asr	rO 		/ lvalues are word addresses
+	mov	r0,(r5)+
+	jmp    *(r3)+		/ linkage between subroutines
+x:
+	mov	*(r3)+,(r5)+
+	jmp	*(r3)+
+c:
+	mov	(r3)+,(r5)+
+	jmp	*(r3)+
+
+b12:
+	add	-(r5),-2(r5)
+	jmp	*(r3)+
+
+b1:
+	mov	-(r5),r0	/ rvalue
+	mov	-(r5),r1	/ lvalue
+	asl	r1		/ now byte address
+	mov	r0,(r1)		/ actual assignment
+	mov	r0,(r5)+	/ = returns an lvalue
+	jmp	*(r3)+
+</pre></tt></dd></dl>
+The above code as compared to the obvious 3 instruction directly
+executed equivalent gives the approximate 5:1 speed and 2:1 space
+penalties one pays in using B.
+<br> <br>
+The salient features for debugging are then:
+<dl compact="">
+<dt>1.</dt><dd>
+Machine r4 is the display pointer and can be used to trace
+function calls and determine automatic variable values at
+each call.
+</dd><dt>2.</dt><dd>
+Machine r3 is the current program counter and can be used
+to determine the current point of execution.
+All externals are globals with their variable names prefixed by
+`.'.  Thus the debugger [4] can be used directly
+to give values of external variables.
+</dd><dt>4.</dt><dd>
+All data lvalues are word addresses and therefore not
+directly examinable by the debugger.  (See ` request in I
+of [4])  [I don't really know what this might refer to.
+It is probably some command in the very early Unix debugger -- DMR]
+</dd></dl>
+<h4>13.0 Nasties
+</h4>
+<br> <br>
+This section describes the 'glitches' found in all languages, but
+rarely reported.
+<dl compact="">
+<dt>1.</dt><dd>
+The compiler makes sense of certain expressions with
+operators in ambiguous cases (e.g. a+++b) but not others
+even in unambiguous cases (e.g. a+++++b).
+</dd><dt>2.</dt><dd>
+The B assembler /etc/ba does not correctly handle
+all possible combinations of intermediate language.  The symptom
+is undefined symbols in the assembly of the output from
+/etc/ba.  This is rare.
+</dd><dt>3.</dt><dd>
+The B interpreter /etc/bilib is really a library of threaded code segment.
+The following code segments have not yet been written:
+<dl><dt></dt><dd><tt><pre>b103	=&amp;
+b104	===
+b105	=!=
+b106	=&lt;=
+b107	=&lt;
+b110	=&gt;=
+b111	=&gt;
+b120	=/
+</pre></tt></dd></dl>
+</dd><dt>4.</dt><dd>
+Initialization of external variables with addresses
+of other externals is not possible due to a loader deficiency.
+</dd><dt>5.</dt><dd>
+Since externals are implemented as globals with names preceded by '.',
+the external names `byte', `endif', `even'
+and `globl' conflict with assembler pseudooperations and
+should be avoided.
+</dd></dl>
+<h4>Diagnostics
+</h4>
+<br> <br>
+Diagnostics
+consist of two letters, an optional name, and a
+source line number.  Due to the free format of the source, the
+number might be high.  The following is a list of the
+diagnostics.
+<dl><dt></dt><dd><tt><pre>error	name	meaninq
+
+$)	--	{} imbalance
+()	--	() imbalance
+*/	--	/* */ imbalance
+[]	--	[] imbalance
+&gt;c	--	case table overflow (fatal)
+&gt;e	--	expression stack overflow (fatal)
+&gt;i	--	label table overflow (fatal)
+&gt;s	--	symbol table overflow (fatal)
+ex	--	expression syntax
+lv	--	rvalue where lvalue expected
+rd	name	name redeclaration
+sx	keyword	statement syntax
+un	name	undefined name
+xx	--	external syntax
+</pre></tt></dd></dl>
+	[ signature line ]
+
+<h4>References
+</h4>
+<br> <br>
+<dl compact="">
+<dt>1.</dt><dd>
+Richards, M. The BCPL Reference Manual.  Multics repository
+M0099.
+</dd><dt>2.</dt><dd>
+Canaday, R.H. and Ritchie, D.M.  Bell Laboratories BCPL.
+MM 69-1371/1373-7/12.
+</dd><dt>3.</dt><dd>
+Ritchie, D.M.  The UNIX Time Sharing System. MM 71-1273-4.
+</dd><dt>4.</dt><dd>
+Thompson, K. and Ritchie, D.M. UNIX Programmer's Manual.
+Available by arrangement.
+</dd></dl>
+<br> <br>
+    [<i>Two of these references--the one to Richards's early BCPL
+    manual, and to the first edition of the UNIX Programmer's manual, are
+    available under my main home page.
+    The ultimate content of "The UNIX Time Sharing
+    System evolved into the C.ACM paper, there (in
+    further revised form) into the BSTJ paper available
+    there as well.</i>]
+<br> <br>
+<a href="http://www.lucent.com/copyright.html">
+Copyright</a> © 1996 Lucent Technologies Inc.  All rights reserved.
+
+</body></html>
