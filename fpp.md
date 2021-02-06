@@ -147,14 +147,14 @@ instructions are fetched, decoded, and executed as follows:
    set FG to the group bit (0x0200 bit of FIR).
 
  * If the indirect bit (the 0x1000 bit of FIR)
-   is 1, set Y to M[Y].
+   is 1, set FY to M[FY].
 
  * If FIDX = 0, skip the rest of these instructions.
 
  * If the increment bit (the 0x0100 bit of FIR)
    is set, then set I[FIDX] to I[FIDX] + 1.
 
- * Set Y to Y + I[FIDX].
+ * Set FY to FY + I[FIDX].
    
 ## Group 0 instructions
 
@@ -303,7 +303,7 @@ Otherwise do nothing.
    The assembler mnemonics are TRAP3 through TRAP7.
    
   By convention, when the CPU gets control
-  after a TRAP3, it issues a JMP to FY
+  after a TRAP3, it issues a JMP to
   FY and does not automatically restart the FPP.
   In case of a TRAP4, the CPU issues a JMS to FY
   and restarts the FPP after the JMS returns.
@@ -324,5 +324,5 @@ the following memory locations are set:
  * Set M[FAPT+3] to FBASE
  * Set M[FAPT+4] to FPC
  
- Then set FF to 1.
+ Then FF is set to 1.
 
