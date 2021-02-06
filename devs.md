@@ -54,7 +54,7 @@ When the character is read, set RF to 1.
 ## Console text display (D = 0x04)
 
 This corresponds to the KL8-E console text display or printer controller.
-and is connected to a sink for bytes.
+and is connected to a sink for characters.
 It has a single register TB
 that holds the next character to be written to the source.
 The width of this register depends on where the output is going to.
@@ -167,7 +167,7 @@ When the byte is written, set PF to 1.
 
 This device corresponds loosely to the VC8-E oscilloscope controller,
 but behaves more like a turtle-graphics window.
-It is connected to a graphics screen.
+It is connected to a graphics canvas.
 It has two 32-bit registers X and Y, which are both 0
 to address the pixel in the center of the screen.
 There is also a 1-bit register GF
@@ -282,7 +282,7 @@ does not exist,
 the 0x0020 bit is 1 if the selected device has been set read-only,
 the 0x0001 bits is 1 if the specified track does not exist
 on the selected device.
-The meaning of the other bits is device-dependent.
+The meaning of the other bits is implementation-dependent.
 
 DOP = 1: Disk skip on flags (DSKP).
 
@@ -336,9 +336,16 @@ of FAPT, FPC, FX0, FBASE, and FY are unsigned integers
 between 0 and H, both inclusive.
 
  * FAPT is the 32-bit Active Parameter Table,
-   which points to the memory locations where
+   which points to the six memory locations where
    most of the other registers are stored
    when the FPP is not executing instructions.
+   It is an error for the CPU to access or modify
+   these memory locations while the FPP is running.
+   
+   Note that M[FAPT] is available to the FPP
+   for implementation-dependent purposes;
+   it should not be accessed or modified by the CPU
+   at any time.
    
  * FPC is the 32-bit program counter that
    points to the next instruction to be executed.
