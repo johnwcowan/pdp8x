@@ -14,7 +14,7 @@ Other devices may exist.
 
 This corresponds to the KL8-E console text display or printer controller.
 and is connected to a source of characters.
-It has a single register KB
+It has a register KB
 that holds the last character read from the source.
 The width of this register depends on where the input is coming from.
 If the source provides Unicode characters, it will be 21 bits wide,
@@ -55,8 +55,8 @@ When the character is read, set RF to 1.
 
 This corresponds to the KL8-E console text display or printer controller.
 and is connected to a sink for characters.
-It has a single register TB
-that holds the next character to be written to the source.
+It has a register TB
+that holds the next character to be written to the sink.
 The width of this register depends on where the output is going to.
 If the sink accepts Unicode characters, it will be 21 bits wide,
 but if the sink accepts only ASCII characters, it will be 8 bits wide,
@@ -100,7 +100,7 @@ When the character is written, set TF to 1.
 
 This device corresponds to the PR8-E high-speed paper tape reader controller,
 and is connected to a source of bytes.
-It has a single 8-bit register RB
+It has a 8-bit register RB
 that holds the last byte read from the source.
 There is also a 1-bit register RF
 indicating that the last operation is complete.
@@ -134,7 +134,7 @@ When the byte is read, set RF to 1.
 
 This device corresponds to the PC8-E high-speed paper tape punch controller,
 and is connected to a sink for bytes.
-It has a single 8-bit register PB
+It has a 8-bit register PB
 that holds the next byte to be written to the sink.
 There is also a 1-bit register PF
 indicating that the last operation is complete.
@@ -235,7 +235,7 @@ and may be set read-only by the controller.
 Each device is partitioned into tracks,
 and each track into 32 sectors of 2 KW (one page) each.
 The minimum number of tracks is 200,
-and the maximum number of tracks is 2^27^ - 1.
+and the theoretical maximum number of tracks is 2^27^ - 1.
 
 The controller has four registers:
 

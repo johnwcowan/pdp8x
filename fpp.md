@@ -2,7 +2,7 @@
 
 The FPP-8/X is a rethink of the DEC FPP-8, a floating point
 coprocessor meant to work with the PDP-8/X.
-Floats are stored in a single 32-bit word
+Floats are stored in a single 32-bit word.
 
 Like PDP-8/X instructions, FPP-8/X instructions are also
 32 bits long, although only the least significant 28 bits are
@@ -32,7 +32,7 @@ IEEE 754(2008) 32-bit binary floats.
 The question of endianism is still open.
 
 We write float values either as signed decimal numbers
-(with either a decimal point or an exponent) or as
+(with either a decimal point or an exponent or both) or as
 the values +inf.0, -inf.0, and +nan.0
 or as unsigned hexadecimal values starting with 0x.
 
@@ -121,6 +121,7 @@ instructions are fetched, decoded, and executed as follows:
  * Set FOP to the 3 most significant bits of FIR.
 
  * Set FPC to FPC + 1, ignoring any overflow.
+   If FPC > H, set FPC to 0.
    
  * If FPC is greater than H, set FPC to 0.
       
@@ -139,6 +140,7 @@ instructions are fetched, decoded, and executed as follows:
    then this is a double-word instruction:
    so set FY to M[FPC] and set FPC to FPC + 1,
    ignoring any overflow.
+   If FPC > H, set FPC to 0.
    Then if FPC > H, set FPC to 0.
 
  *  In either case,
@@ -199,7 +201,7 @@ depend on FY, which therefore must not be computed.
    set FAC to the integer value of FAC.
    The assembler mnemonic is FINT.
  
- * If FOPX iz 0x2,
+ * If FOPX is 0x2,
    set FAC to the integer value of FAC, and then
    set I[FIDX] to FAC.   
    The assembler mnemonic is ATX.
@@ -216,12 +218,14 @@ depend on FY, which therefore must not be computed.
  * If FOPX is 0x8,
    set I[FIDX] to M[FPC] and
    then set FPC to FPC + 1, ignoring overflow.
+   If FPC > H, set FPC to 0.
    The assembler mnemonic is LDX.
  
  * If FOPX is 0x9,
    set I[FIDX] to the sum
    of I[FIDX] and M[FPC];
    then set FPC to FPC + 1, ignoring overflow.
+   If FPC > H, set FPC to 0.
    The assembler mnemonic is ADDX.
  
  * If FOPX is 0xA,
@@ -290,6 +294,7 @@ Otherwise do nothing.
    set M[FY] to FPC
    and then set M[FY+1] to FPC + 1, ignoring overflow.
    Then set FPC to FY + 1, ignoring overflow.
+   If FPC > H, set FPC to 0.
    The assembler mnemonic is JSR.
 
 ## Other group 1 instructions
