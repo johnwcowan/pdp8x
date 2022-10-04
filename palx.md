@@ -6,11 +6,10 @@ except inside a comment.
 ## Line layouts
 ```
 [label,] expr* [/comment]
+[label,] nonmri [/comment]
 [label,] mri [I] [Z] addr [/comment]
 [label,] pseudo-op [/comment]
 ```
-
-The memory-referencing instructions are TBD.
 
 # Expression primitives
 ```
@@ -29,7 +28,7 @@ number with non-trailing decimal or exponent - 32-bit IEEE float
 + - integer addition
 - integer subtraction/negation
 & - bitwwise and
-(whitespace) - bitwise or
+| - bitwise or
 # - low half on the left, high half on the right
 ```
 
@@ -65,6 +64,8 @@ reloc addr - assemble in current location as if at addr
 sect [name] - start assembling a new relocatable section with CPU code
 skipdef name=addr - define new skip instruction
 text /foo/ - assemble UTF-8 into words with NUL termination (little-endian)
+word - assemble 0x0000 if high half, nothing if low half
+       (implied after JMS or JMP or before datum or label)
 ```
 
 ## Notes
@@ -96,11 +97,15 @@ where <mri> is the operation we want to do.
 
 # Instruction sequences at end of code area in EAP mode
 
+```
           <last instruction, non-skip>
           jmp last
           <assembler-inserted pointers and values>
 last,     nop
+```
+                    
 
+```
           <last instruction, skip>
           jmp last-1
           jmp last
