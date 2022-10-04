@@ -293,6 +293,9 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
 
  * If the 0x0080 and the 0x0008 bits are both 1, then exchange MQ and AC.
    The assembler mnemonic is SWP.
+   
+Note that if all the 0xFFF bits are zero, no action is taken.
+The assembler mnemonic is NOP.
     
 ## Skip instructions
  
