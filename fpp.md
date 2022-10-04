@@ -45,7 +45,11 @@ They are visible to both the CPU and the FPP and are documented
 
 The following registers are not visible to programmers and are used
 in this explanation; they may or may not correspond to actual registers:
-  
+
+  * The 32-bit FIW register contains the memory location
+    currently being executed.
+    FIR is always treated as a bit vector.
+    
   * The 16-bit FIR register
     contains the instruction currently being executed.
     FIR is always treated as a bit vector.
@@ -114,27 +118,29 @@ the registers are initialized as follows:
 ## Instruction decoding
 
 When the FPP starts running,
-instructions are fetched, decoded, and executed as follows:
+instructions are fetched, decoded, and executed as follows.
+Start by setting FIW to M[FPC] and FIR to the least significant
+bits of IW.
 
  * Set FIR to the 16 least significant bits of M[FPC].
 
  * Set FOP to the 3 most significant bits of FIR.
 
  * Set FPC to FPC + 1, ignoring any overflow.
-   If FPC > H, set FPC to 0.
-   
+ 
  * If FPC is greater than H, set FPC to 0.
       
  * Determine the format of the instruction in FIR.
    If the page bit (bit 0x0800) is 0,
    this is a base page instruction.
-   Set FY to FBASE + the 11 least significant bits of IR and
+   Set FY to FBASE + the 11 least significant bits of FIR and
    set FG to 0,
-   and skip the rest of this section.
+   and skip the next two points.
 
  * If the double-word bit (the 0x0200 bit of IR) is 0,
    then this is a single-word instruction,
-   so set FY to 0.
+   so set FY to the 21 most significant bits of FPC +
+   the 11 least significant bits of FIR
 
  * If the double-word bit is 1,
    then this is a double-word instruction:
@@ -151,12 +157,19 @@ instructions are fetched, decoded, and executed as follows:
  * If the indirect bit (the 0x1000 bit of FIR)
    is 1, set FY to M[FY].
 
- * If FIDX = 0, skip the rest of these instructions.
+ * If FIDX = 0, skip the next two points.
 
  * If the increment bit (the 0x0100 bit of FIR)
    is set, then set I[FIDX] to I[FIDX] + 1.
 
  * Set FY to FY + I[FIDX].
+
+ * Execute the instruction based on the contents of
+   FOP, FOPX, FG, and the details in the following sections.
+
+Then set FIR to the most significant bits of FIW, and repeat
+the above steps.  Finally. repeat from the beginning.
+
    
 ## Group 0 instructions
 
@@ -181,7 +194,7 @@ whose group bit is 0.
  * If FOP is 0x05, then set F[FY] to FAC + F[FY].
    The assembler mnemonic is FADDM.
  
- * If FOP is 0x06, then set F[Y] to FAC.
+ * If FOP is 0x06, then set F[FY] to FAC.
    The assembler mnemonic is FSTA.
  
  * If FOP is 0x07, then set F[Y] to FAC * F[FY].
