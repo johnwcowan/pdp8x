@@ -65,16 +65,17 @@ sect [name] - start assembling a new relocatable section with CPU code
 skipdef name=addr - define new skip instruction
 text /foo/ - assemble UTF-8 into words with NUL termination (little-endian)
 word - assemble 0x0000 if high half, nothing if low half
-       (implied after JMS or JMP or before datum or label)
+       (implied after jump instructions or before datums or labeled instructions)
 ```
 
 ## Notes
 INC is equivalent to ISZ, but the programmer guarantees it won't skip.
 (FPP equivalents needed?)
 
-# Page zero subroutine for off-page indirection
+# Page zero subroutine for off-page indirection in EAP mode
 
 ```
+          *07FA
 saveac,   0
 indirect, 0
 offpage,  0
@@ -83,7 +84,7 @@ offpage,  0
           isz offpage    / on return, skip word just fetched
           dca indirect   / stash the address to indirect through
           tad saveac     / restore AC
-          jmp i offpage  / return from subroutine
+          jmp i offpage  / return from subroutine; last instruction on page zero
 ```
 
 The calling sequence is:
@@ -98,18 +99,18 @@ where <mri> is the operation we want to do.
 # Instruction sequences at end of code area in EAP mode
 
 ```
-          <last instruction, non-skip>
+          / last instruction, non-skip
           jmp last
-          <assembler-inserted pointers and values>
-last,     nop
+          / assembler-inserted pointers and values
+last,     nop            / last instruction on page
 ```
                     
 
 ```
-          <last instruction, skip>
+          / last instruction, skip
           jmp last-1
           jmp last
-          <assembler-inserted pointers and values>
+          / assembler-inserted pointers and values
           skp
 last,     skp            / last instruction on page
 ```
