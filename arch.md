@@ -71,19 +71,19 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
     the AC, any overflow changes the L register from 0 to 1
     or from 1 to 0.
      
-  * The 32-bit PC or program counter points to the next instruction to be
+  * The 32-bit PC or program counter points to the next memory location to be
     executed. Its value is an unsigned integer
     between 0 and however much memory is installed in the system.
      
   The following registers are not visible to programmers and are used
   in this explanation; they may or may not correspond to actual registers:
   
-  * The 16-bit IR register holds the least significant bits
-    of the instruction currently being executed.
+  * The 32-bit IW register holds the instruction word being executed.
+    It is always treated as a bit vector.
+  
+  * The 16-bit IR register holds either the least significant bits
+    or the most significant bits of IW.
     IR is always treated as a bit vector.
-    
-  * The 16-bit IMM register holds the most significant bits
-    of the instruction currently being executed.
     
   * The 3-bit OP register contains the 3 most significant bits of IR.
   
@@ -127,26 +127,24 @@ whose address is x.
 
 ## Instruction decoding
 
-Instructions are fetched, decoded, and executed as follows:
-
- * Set IR to the least significant halfword of M[PC].
+Instructions are fetched, decoded, and executed as follows.
+Start by setting IW to M[PC] and IR to the most significant
+bits of IW.
  
- * Set IMM to the most significant halfword of M[PC].
-   
  * Set OP to the 3 most significant bits of IR.
-   
- * Set the 21 most significant bits of Y
-   to the 21 most significant bits of PC,
-   and the 11 least significant bits of Y to 0.
    
  * Set PC to PC + 1, ignoring any overflow.
    
  * If PC is greater than H, set PC to 0.
-   
+
  * If S is 0, execute the instruction based on the contents of OP
    and the details in the following sections.
    
  * Set S to 0.
+
+Then set IR to the most significant bits of IW, and repeat
+the above steps.  Finally. repeat from the beginning.
+
    
 ## Memory-referencing instructions
    
@@ -194,11 +192,17 @@ Then one of the following six cases is chosen:
    If PC is now greater than H, then set PC to 0.
    The assembler mnemonic is ISZ (increment and skip if zero).
  
- * If OP is 0x4, then set M[Y] to PC
+ * If OP is 0x4, then set M[Y] to PC + 1
    and set PC to Y + 1.
+   (Note that if this instruction is in the least significant bits
+   of a memory location,
+   the instruction in the most significant bits will never be executed.)
    The assembler mnemonic is JMS (jump to subroutine).
  
- * If OP is 0x5, then set PC to Y .
+ * If OP is 0x5, then set PC to Y.
+   (Note that if this instruction is in the least significant bits,
+   the instruction in the most significant bits of a memory location
+   will never be executed.)
    The assembler mnemonic is JMP.
  
 ## I/O instructions
@@ -222,13 +226,6 @@ Note that all applicable actions are taken, not just the first one.
 For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
 and the 0x0002 bit is called the RT (rotate twice) bit.
-
- * If the 0x0800 bit of IR is 1,
-   then set the 16 least significant bits of AC to IMM,
-   and the 16 most significant bits of AC
-   to the sign bit of IMM.
-   The assembler mnemonic is IMA (immediate to AC).
-   This instruction has no PDP-8 equivalent.
 
  * If the 0x0200 bit of IR is 1, then set AC to 0.
    The assembler mnemonic is CLA (clear AC).
