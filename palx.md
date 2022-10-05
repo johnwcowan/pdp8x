@@ -70,7 +70,7 @@ word - assemble 0x0000 if high half, nothing if low half
 
 ## Notes
 INC is equivalent to ISZ, but the programmer guarantees it won't skip.
-(FPP equivalents needed?)
+
 
 # Page zero subroutine for off-page indirection in EAP mode
 
@@ -103,11 +103,8 @@ where <mri> is the operation we want to do.
           jmp last
           / assembler-inserted pointers and values
 last,     nop            / last instruction on page
-```
-                    
 
-```
-          / last instruction, skip
+       / last instruction, skip
           jmp last-1
           jmp last
           / assembler-inserted pointers and values
