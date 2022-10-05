@@ -71,8 +71,16 @@ word - assemble 0x0000 if high half, nothing if low half
 ## Notes
 INC is equivalent to ISZ, but the programmer guarantees it won't skip.
 
+MRI instructions:
 
-# Page zero subroutine for off-page indirection in EAP mode
+* AND, TAD, ISZ, DCA, JMS, JMP
+* MUY, DVI, NMI, DAD. DST (do not use Z)
+* FLDA, FADD, FSUB, FDIV, FMUL, FADDM, FSTA, FMULM
+* JEQ, JGE, JLE, JA, JNE, JLT, JGT, JAL
+* SETX, SETB, JSA, JSR, JXN
+* TRAP3, TRAP4, TRAP5, TRAP6, TRAP7
+
+## Page zero subroutine for off-page indirection in EAP mode
 
 ```
           *07FA
@@ -96,7 +104,7 @@ The calling sequence is:
 
 where <mri> is the operation we want to do.
 
-# Instruction sequences at end of code area in EAP mode
+## Instruction sequences at end of code area in EAP mode
 
 ```
           / last instruction, non-skip
@@ -104,7 +112,7 @@ where <mri> is the operation we want to do.
           / assembler-inserted pointers and values
 last,     nop            / last instruction on page
 
-       / last instruction, skip
+          / last instruction, skip
           jmp last-1
           jmp last
           / assembler-inserted pointers and values
