@@ -288,15 +288,6 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
    The assembler mnemonic is BSW (byte swap); the PDP-8 equivalent
    swaps the two six-bit halfwords and so is more like the HSW instruction.
    
- * If the 0x0080 bit is 1, then set AC to AC bitwise-ORed with MQ.
-   The assembler mnemonic is MQA (MQ to AC).
- 
- * If the 0x0008 bit is 1, then set MQ to AC.
-   The assembler mnemonic is ACM (AC to MQ).
-
- * If the 0x0080 and the 0x0008 bits are both 1, then exchange MQ and AC.
-   The assembler mnemonic is SWP.
-   
 Note that if all the 0x1FFF bits are zero, no action is taken.
 The assembler mnemonic is NOP.
     
@@ -441,9 +432,7 @@ and one of the following operations is executed:
  * If EOP is 0xA, set M[Y] to AC and M[Y+1] to MQ.
    The assembler mnemonic is DST (Double Store).
    
- * If EOP is 0xB, set AC to MQ and MQ to the former
-   contents of AC.
-   The assembler mnemonic is SWP (Swap).
+ * If EOP is 0xB, take no action.
    
  * If EOP is 0xC, set MQ to the sum of MQ and 1.
    Then set AC to the sum of AC and the carry from MQ.
