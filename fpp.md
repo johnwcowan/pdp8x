@@ -1,14 +1,15 @@
 # The FPP-8/X architecture
 
-The FPP-8/X is a rethink of the DEC FPP-8, a floating point
+The FPP-8/X is a rethink of the DEC FPP-8/A
+(for more details, see Chapter 3 of the
+[*PDP/8-A Minicomputer Handbook*](http://www.bitsavers.org/pdf/dec/pdp8/handbooks/MinicomputerHandbook_1976.pdf)).
+The FPP 8/X is a floating point
 coprocessor meant to work with the PDP-8/X.
 Floats are stored in a single 32-bit word.
 
 Like PDP-8/X instructions, FPP-8/X instructions are also
 32 bits long, although only the least significant 28 bits are
 used.
-
-[link to documentation for the FPP-8 instruction set]
 
 Because the FPP-8/X architecture is designed as a deterministic
 float machine, there is no support for integer arithmetic or
