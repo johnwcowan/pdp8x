@@ -3,8 +3,8 @@
 The PDP-8/X is a rethink of the DEC PDP-8, a 12-bit minicomputer.
 Because the PDP-8 is word-oriented, it almost doesn't matter
 how big the words are, so we extend them from 12 bits to 32 bits.
-However, the instructions are only 16 bits long; to keep the machine
-word-oriented, the remaining bits are unused except in one case.
+However, the instructions are only 16 bits long, so we pack
+two of them into one word; this is a substantial difference from the PDP-8.
 
 Good resources for the final PDP-8 models, the PDP-8/E, PDP-8/F, PDP/8-M, and
 PDP-8/A (the letters are meaningless and not even alphabetical), are the
@@ -97,6 +97,12 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   
    * The 4-bit DOP register contains the number of
      a device-specific I/O instruction.
+     
+   * The 4-bit EOP register holds the extended arithmetic
+     instruction being executed.
+     
+   * The 7-bit SC (shift count) register holds the number of
+     shifts to be performed by an extended arithmetic shift instruction.
    
    * The 32-bit H register is set when the machine is built,
      and contains the address of the last existing word in memory.
@@ -217,7 +223,7 @@ DOP to an undefined instruction, then no action is taken.
  
 ## Operate instructions
  
-If OP is 0x7 and the 0x1000 bit is 0,
+If OP is 0x7 and the 0x0800 bit is 0,
 then various operations on AC, L, and/or MQ are
 performed depending on the bits of IR,
 which are examined in the order given below.
@@ -291,12 +297,13 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
  * If the 0x0080 and the 0x0008 bits are both 1, then exchange MQ and AC.
    The assembler mnemonic is SWP.
    
-Note that if all the 0xFFF bits are zero, no action is taken.
+Note that if all the 0x1FFF bits are zero, no action is taken.
 The assembler mnemonic is NOP.
     
 ## Skip instructions
  
-If OP is 0x7 and the 0x1000 bit of IR is 1,
+If OP is 0x7 and the 0x0800 bit of IR is 1
+but the 0x0001 bit of IR is 0,
 then S is set depending on various bits
 of IR, AC, and L.
 The bits of IR are examined in the order given below.
@@ -325,3 +332,138 @@ Note that *all* applicable actions are taken, not just the first one.
    (user-visible and not) and all of memory are unchanged.
    The assembler mnemonic is HLT.
 
+## AC and MQ instructions
+
+If OP is 0x7 and the 0x0800 bit and the 0x0001 bit of IR are both 1,
+then the bits of IR are examined in the order given below.
+Note that *all* applicable actions are taken, not just the first one.
+
+ * If the 0x0200 bit is 1, then set AC to 0.
+   There is no assembler mnemonic.
+   
+ * If the 0x0400 bit is 1, then set AC to AC bitwise-ORed with MQ.
+   The assembler mnemonic is MQA (MQ to AC).
+ 
+ * If the 0x0100 bit is 1, then set MQ to AC.
+   The assembler mnemonic is MQL (MQ Load).
+
+ * If the 0x0400 and the 0x0100 bits are both 1, then exchange MQ and AC.
+   The assembler mnemonic is SWP.
+   
+## Extended arithmetic instructions
+
+When an AC and MQ instruction is complete,
+the EOP register is set to the 0x00F0 bits of IR
+and one of the following operations is executed:
+
+ * If EOP is 0x0, no action is taken.
+
+ * If EOP is 0x1, set SC is the 11 low-order bits of AC,
+   and set AC to 0.
+   The assembler mnemonic is ACS (AC to CS).
+
+ * If EOP is 0x2, set Y to M[PC] and PC to PC + 1.
+   If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
+   The sum of AC and the 64-bit unsigned product of Y and MQ is computed.
+   Set AC to the 32 high-order bits of the product,
+   and MQ to the 32-low-order bits.  Set L and SC to 0.
+   The assembler mnemonic is MUY (Multiply).
+     
+ * If EOP is 0x3, set Y to M[PC] and PC to PC + 1.
+   If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
+   The 64-bit unsigned number whose 32 high-order bits are
+   in the AC and whose 32 low-order bits are in the MQ is
+   divided by Y.  Set MQ to the quotient and AC to the remainder.
+   Set L to 1 if there is a divide overflow and set to 0 if not.
+   Set SC to 0.
+   The assembler mnemonic is DVI (Divide).
+     
+ * If EOP is 0x4, SC is set to 0.
+   Then L, AC, and MQ are shifted left as described
+   for the LSH instruction.
+   The left shift is repeated, setting SC to SC + 1, until
+   either the 0x8000_0000 and 0x4000_0000 bits of AC are different,
+   or AC is 0xC000_0000 and MQ is 0.
+   The assembler mnemonic is NMI (Normalize)
+      
+ * If EOP is 0x5, the L, AC, and MQ are treated as a 65-bit register,
+   where L is the high-order bit, AC is the 32 middle bits, and MQ is
+   the 32 low-order bits.  To shift:
+   
+   * set L to the 0x8000_0000 bit of AC
+   * shift the bits of AC left
+   * set the 0x0000_0001 bit of AC to the 0x8000_0000 bit of MQ
+   * shift the bits of MQ left
+   * set the 0x0000_0001 bit of MQ to zero.
+
+   The SC register specifies how many shifts to perform.
+   At the end, set SC to 0.
+   The assembler mnemonic is SHL (Shift Left).
+     
+ * If EOP is 0x6, the L, AC, and MQ are treated as a 65-bit register,
+   where L is the high-order bit, AC is the 32 middle bits, and MQ is
+   the 32 low-order bits.  To shift:
+   
+   * set L to 0
+   * shift the bits of MQ right
+   * set the 0x8000_0000 bit of MQ to the 0x0000_0001 bit of AC
+   * shift the bits of AC right
+   * set the 0x8000_0000 bit of AC to L
+  
+   The SC register specifies how many shifts to perform.
+   At the end, SC is set to 0.
+   The assembler mnemonic is LSR (Logical Shift Right).
+   
+ * If EOP is 0x7, the L, AC, and MQ are treated as a 65-bit register,
+   where L is the high-order bit, AC is the 32 middle bits, and MQ is
+   the 32 low-order bits.  To shift:
+   
+   * set L to 0
+   * shift the bits of MQ right
+   * set the 0x8000_0000 bit of MQ to the 0x0000_0001 bit of AC
+   * shift the bits of AC right
+   * set the 0x8000_0000 bit of AC to L
+  
+   The SC register specifies how many shifts to perform.
+   At the end, SC is set to 0.
+   The assembler mnemonic is ASR (Arithmetic Shift Right).
+   
+ * If EOP is 0x8, set AC to AC bitwise-ORed with SC.
+   The assembler mnemonic is SCA (Step Counter to AC).
+   
+ * If EOP is 0x9, set Y to M[PC] and PC to PC + 1.
+   If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
+   Then set MQ to the sum of MQ and M[Y+1], and set AC
+   to the sum of AC, M[Y], and the carry from MQ.
+   Set L to the carry from AC.
+   The assembler mnemonic is DAD (Double Add).
+   
+ * If EOP is 0xA, set M[Y] to AC and M[Y+1] to MQ.
+   The assembler mnemonic is DST (Double Store).
+   
+ * If EOP is 0xB, set AC to MQ and MQ to the former
+   contents of AC.
+   The assembler mnemonic is SWP (Swap).
+   
+ * If EOP is 0xC, set MQ to the sum of MQ and 1.
+   Then set AC to the sum of AC and the carry from MQ.
+   Set L to the carry from AC.
+   The assembler mnemonic is DPIC (Double Precision Increment).
+   
+ * If EOP is 0xD, set S to 1 if both AC and MQ are 0.
+   Otherwise set S to 0.
+   The assembler mnemonic is DPSZ (Double Precision Skip if Zero).
+ 
+ * If EOP is 0xE, set AC to the bitwise-NOT of AC
+   and MQ to the bitwise-NOT of MQ.
+   The assembler mnemonic is DCM (Double Complement).
+   This is not the same as the FPP-8/A DCM instruction,
+   which increments AC and MQ after complementing them.
+   
+ * If EOP is 0xF, set AC to MQ - AC.  Set L to 1 if
+   a borrow is propagated from the most significant bit of AC.
+   Otherwise, set L to 0.
+   
+   
+ 
+   
