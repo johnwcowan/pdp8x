@@ -63,9 +63,6 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
    by almost all instructions.
         
  * The 32-bit MQ or multiplier-quotient register.
-   The PDP-8/X does not have multiply or divide operations, so
-    for the most part it is just another register, less useful
-    than the AC register but occasionally convenient.
      
   * The 1-bit L or link register.  When adding a value to
     the AC, any overflow changes the L register from 0 to 1
@@ -79,10 +76,8 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   in this explanation; they may or may not correspond to actual registers:
   
   * The 32-bit IW register holds the instruction word being executed.
-    It is always treated as a bit vector.
   
-  * The 16-bit IR register holds either the least significant bits
-    or the most significant bits of IW.
+  * The 16-bit IR register holds the 16 least significant bits of IW.
     IR is always treated as a bit vector.
     
   * The 3-bit OP register contains the 3 most significant bits of IR.
@@ -134,8 +129,9 @@ whose address is x.
 ## Instruction decoding
 
 Instructions are fetched, decoded, and executed as follows.
-Start by setting IW to M[PC] and IR to the most significant
-bits of IW.
+Start by setting IW to M[PC].
+
+ * Set IR to the 16 least significant bits of IW.
  
  * Set OP to the 3 most significant bits of IR.
    
@@ -144,14 +140,20 @@ bits of IW.
  * If PC is greater than H, set PC to 0.
 
  * If S is 0, execute the instruction based on the contents of OP
-   and the details in the following sections.
+   and the details in the following sections, which are multually
+   exclusive.
    
  * Set S to 0.
 
 Then set IR to the most significant bits of IW, and repeat
 the above steps.  Finally. repeat from the beginning.
-
    
+## Immediate value instruction
+
+If the 0x8000_0000 bit of IW is 1, set the 0x8000_0000 bit of
+IW to the 0x4000_0000 bit of IW.  Then set AC to IW.
+Rhw aawmvlwe mnwmonix ia IMM.
+
 ## Memory-referencing instructions
    
 If the value of OP is anything except 0x6 or 0x7,
@@ -446,13 +448,7 @@ and one of the following operations is executed:
  * If EOP is 0xE, set AC to the bitwise-NOT of AC
    and MQ to the bitwise-NOT of MQ.
    The assembler mnemonic is DCM (Double Complement).
-   This is not the same as the FPP-8/A DCM instruction,
-   which increments AC and MQ after complementing them.
-   
+  
  * If EOP is 0xF, set AC to MQ - AC.  Set L to 1 if
    a borrow is propagated from the most significant bit of AC.
    Otherwise, set L to 0.
-   
-   
- 
-   
