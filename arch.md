@@ -11,7 +11,7 @@ PDP-8/A (the letters are meaningless and not even alphabetical), are the
 *[PDP-8/E and PDP/8-M Small Computer Handbook 1973](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/DEC-S8-OSSCH-A.pdf)*
 (note that there are many editions of the *Small Computer Handbook*,
 each significantly different from the previous one) and the
-*[PDP/8-A Miniprocessor Users Manual 1976](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/EK-8A002-MM-002.pdf)*.
+*[PDP/8-A Miniprocessor Users Manual 1976](http://www.bitsavers.org/pdf/dec/pdp8/pdp8a/EK-8A002-MM-002_PDP-8A_Miniprocessor_Users_Manual_Dec76.pdf)*.
 This document is much less comprehensive, and will attempt to explain
 as clearly as possible what a PDP-8/X CPU actually appears to do.
 (Of course the implementation may be quite different, provided the
@@ -353,8 +353,9 @@ and one of the following operations is executed:
 
  * If EOP is 0x1, set SC is the 11 low-order bits of AC,
    and set AC to 0.
-   The assembler mnemonic is ACS (AC to CS).
-
+   The assembler mnemonic is ASC (AC to SC).
+   (Note that some DEC documentation claims the mnemonic
+   is the meaningless ACS.)
  * If EOP is 0x2, set Y to M[PC] and PC to PC + 1.
    If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
    The sum of AC and the 64-bit unsigned product of Y and MQ is computed.
@@ -452,3 +453,26 @@ and one of the following operations is executed:
  * If EOP is 0xF, set AC to MQ - AC.  Set L to 1 if
    a borrow is propagated from the most significant bit of AC.
    Otherwise, set L to 0.
+   The assembler mnemonic is SAM (Subtract AC from MQ).
+
+   ## Ideas
+
+```
+muurkha> did I already suggest having a couple of extra page selector registers and an extra page selection bit in the instruction word?
+4:21 PM <muurkha> you could use one page selection register for a stack and another for a self pointer
+4:25 PM <muurkha> I mean, not as a mandatory thing, just that some programs might choose to use them that way
+4:26 PM <muurkha> the idea is that instead of a single zero-page/pc-page selection bit, you have a two-bit field where maybe 00 is zero-page, 01 is pc-page, 10 is ss, and 11 is rs
+4:26 PM <muurkha> and instructions to load and store ss and rs
+4:27 PM <muurkha> I feel like the indirection bit kind of makes PDP-8 halfway CISC already
+4:36 PM <jcowan> there's really no alternative to the indirect bit
+4:36 PM <jcowan> let me see if I understand this
+4:38 PM <jcowan> okay, now we have 18 bits
+4:39 PM <jcowan> The 0xB instruction in the EAE range is still free
+4:40 PM <jcowan> I note that SAM says it manipulate the Greater Than Flag, so I have to add that (and maybe use 0B in the EAE range, which currently is undefined, to get/set it
+4:43 PM <jcowan> The X86 segment registers number four because Pascal has four memory spaces code, globals, stack, heap and you statically know for nay pointer which one it is.
+4:43 PM <jcowan> s/nay/any
+4:46 PM <jcowan> so maybe we leave the indirect bit alone and add 2 more bits for these spaces
+```
+
+And then look through some of the [PDP-11 instructions](https://www.teach.cs.toronto.edu/~ajr/258/pdp11.pdf) and canibalize them
+
