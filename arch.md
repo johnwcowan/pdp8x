@@ -455,8 +455,9 @@ and one of the following operations is executed:
    Otherwise, set L to 0.
    The assembler mnemonic is SAM (Subtract AC from MQ).
 
-   ## Ideas
+## Ideas
 
+MQ operates and skips
 ```
 muurkha> did I already suggest having a couple of extra page selector registers and an extra page selection bit in the instruction word?
 4:21 PM <muurkha> you could use one page selection register for a stack and another for a self pointer
@@ -466,7 +467,7 @@ muurkha> did I already suggest having a couple of extra page selector registers 
 4:27 PM <muurkha> I feel like the indirection bit kind of makes PDP-8 halfway CISC already
 4:36 PM <jcowan> there's really no alternative to the indirect bit
 4:36 PM <jcowan> let me see if I understand this
-4:38 PM <jcowan> okay, now we have 18 bits
+4:38 PM <jcowan> okay, now we have 18 bits [no, 17 bits]
 4:39 PM <jcowan> The 0xB instruction in the EAE range is still free
 4:40 PM <jcowan> I note that SAM says it manipulate the Greater Than Flag, so I have to add that (and maybe use 0B in the EAE range, which currently is undefined, to get/set it
 4:43 PM <jcowan> The X86 segment registers number four because Pascal has four memory spaces code, globals, stack, heap and you statically know for nay pointer which one it is.
@@ -474,5 +475,14 @@ muurkha> did I already suggest having a couple of extra page selector registers 
 4:46 PM <jcowan> so maybe we leave the indirect bit alone and add 2 more bits for these spaces
 ```
 
-And then look through some of the [PDP-11 instructions](https://www.teach.cs.toronto.edu/~ajr/258/pdp11.pdf) and canibalize them
+PDP-11 instructions:
+ * decrement AC
+ * add L to AC
+ * subtract L from AC
+ * xor, bit set, bit clear
+ * decrement and skip if zero
+ * JSR, RTS
 
+FPP-8/A instructions:
+ * FLDA, FADD, FSUB, FMUL, FDIV, FADDM, FMULM, FSTA
+ * FINT, FFLT
