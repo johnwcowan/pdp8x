@@ -1,11 +1,10 @@
+**Note: The architecture is being redesigned to use 32-bit instructions.  This paragraph will be removed when everything has been updated.**
+
 # The PDP-8/X architecture
 
 The PDP-8/X is a rethink of the DEC PDP-8, a 12-bit minicomputer.
 Because the PDP-8 is word-oriented, it almost doesn't matter
 how big the words are, so we extend them from 12 bits to 32 bits.
-However, the instructions are only 16 bits long, so we pack
-two of them into one word; this is a substantial difference from the PDP-8.
-
 Good resources for the final PDP-8 models, the PDP-8/E, PDP-8/F, PDP/8-M, and
 PDP-8/A (the letters are meaningless and not even alphabetical), are the
 *[PDP-8/E and PDP/8-M Small Computer Handbook 1973](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/DEC-S8-OSSCH-A.pdf)*
@@ -18,11 +17,8 @@ as clearly as possible what a PDP-8/X CPU actually appears to do.
 user-visible registers, memory locations, and behaviors are the same.)
 
 Because the PDP-8/X architecture is designed as a deterministic
-integer machine, there is no support for interrupts, which on the
+integer machine, there is currently no support for interrupts, which on the
 PDP-8 are signaled by simulating a JMS instruction to address 0.
-
-An optional floating point coprocessor, the FPP-8/X, is documented
-[elsewhere](fpp.md).
 
 It should be fairly easy to implement this architecture on a chip;
 the ordinary PDP-8 was eventually made into a chip,
