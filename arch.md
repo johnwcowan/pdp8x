@@ -44,7 +44,9 @@ by bitwise-NOTting it and then adding 1 to the result.
 We write numeric values either as signed decimal numbers
 or as unsigned hexadecimal values starting with 0x.
 This is different from PDP-8 architecture descriptions,
-which use octal numbers, grouping the 12 bits as 4 groups of 3.
+which use octal numbers, grouping the 12 bits as 4 groups of 3. 
+
+We can also write them as decimal numbers with a decimal point or exponent or both, in which case they they are tepresented ss IEEE float32 values
 
 In order to talk about individual bits,
 we speak of the 0x8000_0000 bit (most significant and the sign bit),
@@ -95,8 +97,8 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
    * The 4-bit DOP register contains the number of
      a device-specific I/O instruction.
           
-   * The 7-bit SC (shift count) register holds the number of
-     shifts to be performed by an extended arithmetic shift instruction.
+   * The 7-bit SC (shift count) register holds the number of shifts to be
+performed by an extended arithmetic shift instruction.
    
    * The 32-bit H register is set when the machine is built,
      and contains the address of the last existing word in memory.
