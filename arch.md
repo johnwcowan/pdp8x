@@ -29,7 +29,8 @@ though most of the 50,000 PDP-8s built were not chip-based.
 The 32-bit words can be interpreted as
 either a vector of 32 bits from the most significant bit
 to the least significant bit, or a signed integer value
-between -2_147_483_648 and 2_147_483_647 inclusive.
+between -2_147_483_648 and 2_147_483_647 inclusive,
+or an IEEE single precision floating point number.
 (Underscores are used to make numbers more readable.)
 We can also interpret a word as two halfwords,
 the 16 most significant bits
@@ -37,16 +38,14 @@ the 16 most significant bits
 and the 16 least significant bits
 (the least significant halfword).
 
-The representation of the integer is twos-complement,
+The representation of integers is twos-complement,
 like most machines today. That is, a word is negated
 by bitwise-NOTting it and then adding 1 to the result.
 
 We write numeric values either as signed decimal numbers
 or as unsigned hexadecimal values starting with 0x.
 This is different from PDP-8 architecture descriptions,
-which use octal numbers, grouping the 12 bits as 4 groups of 3. 
-
-We can also write them as decimal numbers with a decimal point or exponent or both, in which case they they are tepresented ss IEEE float32 values
+which use octal numbers, grouping the 12 bits as 4 groups of 3. Floats are written as decimal numbers with a decimal point or exponent or both.
 
 In order to talk about individual bits,
 we speak of the 0x8000_0000 bit (most significant and the sign bit),
