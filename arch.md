@@ -16,8 +16,7 @@ as clearly as possible what a PDP-8/X CPU actually appears to do.
 (Of course the implementation may be quite different, provided the
 user-visible registers, memory locations, and behaviors are the same.)
 
-Because the PDP-8/X architecture is designed as a deterministic
-integer machine, there is currently no support for interrupts, which on the
+Because the PDP-8/X architecture is designed as a deterministic machine, there is currently no support for interrupts, which on the
 PDP-8 are signaled by simulating a JMS instruction to address 0.
 
 It should be fairly easy to implement this architecture on a chip;
@@ -79,7 +78,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   The following registers are not visible to programmers and are used
   in this explanation; they may or may not correspond to actual registers:
   
-  * The 32-bit R register holds the instruction word being executed.
+  * The 32-bit IW register holds the instruction word being executed.
       
   * The 5-bit OP register contains the 0x7D_0000 bits of IR.
   
