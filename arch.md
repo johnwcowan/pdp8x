@@ -77,7 +77,7 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
     of which the low-order 11 bits must be 0.
 
  * The 32-bit SBASE register holds a memory address
-   of which the low-order 11 bits must be 0.
+   of which the low-order 11 bits must be 1.
 
  * The 32-bit IX0 register, which points to the location in memory
    which corresponds to index register 0.
@@ -120,11 +120,14 @@ It is organized into *pages* that are 2 KW in length.
 This use of the term *page* has nothing to do
 with virtual memory.
 
-The page whose addresses are #x0000_0000 to #x0000_07FF inclusive is called
-*page zero*.  The page that contains the instruction currently being executed is
-called the *current page*.  The page whose lowest address is the BASE register is called the *base page*.  Finally, the page whose highest address is in the SBASE register is called the *stack page*.
+The page whose addresses are #x0000_0000 to #x0000_07FF inclusive is called *page zero*.
+The page that contains the instruction currently being executed is
+called the *current page*.
+The page whose lowest address is the BASE register is called the *base page*.
+Finally, the page whose highest address is in the SBASE register is called the *stack page*.
+These are the only pages that are directly addressable.
    
-The maximum amount is 512K pages, 1 GW; in a fully equipped
+The maximum amount of memory is 512K pages, 1 GW; in a fully equipped
 machine the address of the last word is 0x3FFF_FFFF.  A read from
 a non-existent page returns 0; a write to a non-existent page does nothing.
 
@@ -187,7 +190,7 @@ If the indirect bit is 0, nothing is done.
 This is called *direct addressing*
 
 Any word in memory can be
-accessed indirectly, but only the 2KW of page zero and the 2KW of the current page
+accessed indirectly, but only the 8 KW in the four special pages
 can be accessed directly.
 
 Then one of the following six cases is chosen:
@@ -220,11 +223,31 @@ Then one of the following six cases is chosen:
    the instruction in the most significant bits of a memory location
    will never be executed.)
    The assembler mnemonic is JMP.
+
+ * If FOP is 0x01, then set FAC to FAC + F[FY].
+   The assembler mnemonic is FADD.
  
+ * If FOP is 0x02, then set FAC to FAC - F[FY].
+   The assembler mnemonic is FSUB.
+ 
+ * If FOP is 0x03, then set FAC to FAC / F[FY].
+   The assembler mnemonic is FDIV.
+ 
+ * If FOP is 0x04, then set FAC to FAC * F[FY].
+   The assembler mnemonic is FMUL.
+ 
+ * If FOP is 0x05, then set F[FY] to FAC + F[FY].
+   The assembler mnemonic is FADDM.
+  
+ * If FOP is 0x07, then set F[Y] to FAC * F[FY].
+   The assembler mnemonic is FMULM.
+
+
+   
 ## I/O instructions
  
-If OP is 0x6, then set D to the 0x0FF0 bits of IR
-and set DOP to the 0x000F bits of IR.
+If OP is 0x6, then set D to the 0x0FF0 bits of IW
+and set DOP to the 0x000F bits of IW.
 The effect of executing such an instruction depends on
 the values of D and DOP, and is documented
 [elsewhere](devs.md).
@@ -332,6 +355,112 @@ Note that *all* applicable actions are taken, not just the first one.
    When the processor is restarted externally, all registers
    (user-visible and not) and all of memory are unchanged.
    The assembler mnemonic is HLT.
+
+    * If FOPX is 0x1,
+   set FAC to the integer value of FAC.
+   The assembler mnemonic is FINT.
+ 
+ * If FOPX is 0x2,
+   set FAC to the integer value of FAC, and then
+   set I[FIDX] to FAC.   
+   The assembler mnemonic is ATX.
+   
+ * If FOPX is 0x3,
+   set FAC to to I[FIDX], and then
+   set FAC to the float value of FAC.
+  The assembler mnemonic is XTA.
+ 
+ * If FOPX is 0x4,
+   do nothing.
+   The assembler mnemonic is FNOP.
+ 
+ * If FOPX is 0x8,
+   set I[FIDX] to M[FPC] and
+   then set FPC to FPC + 1, ignoring overflow.
+   If FPC > H, set FPC to 0.
+   The assembler mnemonic is LDX.
+ 
+ * If FOPX is 0x9,
+   set I[FIDX] to the sum
+   of I[FIDX] and M[FPC];
+   then set FPC to FPC + 1, ignoring overflow.
+   If FPC > H, set FPC to 0.
+   The assembler mnemonic is ADDX.
+ 
+ * If FOPX is 0xA,
+   set FAC to the float value of FAC.
+   The assembler mnemonic is FFLT.
+ 
+Otherwise do nothing.
+
+## Jump instructions
+
+ * If FOPX is 0x0,
+   then if FAC is zero then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JEQ.
+ 
+ * If FOPX is 0x1,
+   then if FAC is not negative then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JGE.
+ 
+ * If FOPX is 0x2,
+   then if FAC is not positive then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JLE.
+
+ * If FOPX is 0x3,
+   then set FPC to FY.
+   The assembler mnemonic is JA.
+
+ * If FOPX is 0x4,
+   then if FAC is not zero then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JNE.
+
+ * If FOPX is 0x5,
+   then if FAC is negative then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JLT.
+
+ * If FOPX is 0x6,
+   then if FAC is positive then set FPC to FY;
+   otherwise do nothing.
+  The assembler mnemonic is JGT.
+
+ * If FOP is 0x12, then set FPC to FY.
+   The assembler mnemonic is JXN.
+
+ * If FOPX is 0x7,
+   then if FAC is less than -2^32^ or
+   greater than 2^32-1 then set FPC to FY;
+   otherwise do nothing.
+   The assembler mnemonic is JAL.
+
+ * If FOPX is 0xA,
+   set M[FY] to a JA instruction
+   that when executed will jump indirectly via FY + 1,
+   set M[FY+1] to FPC, and set FPC to FY + 2, ignoring overflow.
+   The assembler mnemonic is JSA.
+
+ * If FOPX is 0xB,
+   set M[FY] to FPC
+   and then set M[FY+1] to FPC + 1, ignoring overflow.
+   Then set FPC to FY + 1, ignoring overflow.
+   If FPC > H, set FPC to 0.
+   The assembler mnemonic is JSR.
+
+## Other instructions
+   
+ * If FOPX is 0x8,
+   set FX0 to FY.
+   The assembler mnemonic is SETX.
+
+ * If FOPX is 0x9,
+   set FBASE to FY.
+   The assembler mnemonic is SETB.
+
 
 ## AC and MQ instructions
 
