@@ -9,8 +9,12 @@ Good resources for the final PDP-8 models, the PDP-8/E, PDP-8/F, PDP/8-M, and
 PDP-8/A (the letters are meaningless and not even alphabetical), are the
 *[PDP-8/E and PDP/8-M Small Computer Handbook 1973](http://www.vandermark.ch/pdp8/uploads/PDP8/PDP8.Manuals/DEC-S8-OSSCH-A.pdf)*
 (note that there are many editions of the *Small Computer Handbook*,
-each significantly different from the previous one) and the
-*[PDP/8-A Miniprocessor Users Manual 1976](http://www.bitsavers.org/pdf/dec/pdp8/pdp8a/EK-8A002-MM-002_PDP-8A_Miniprocessor_Users_Manual_Dec76.pdf)*.
+each significantly different from the previous one), the
+*[PDP/8-A Miniprocessor Users Manual 1976](http://www.bitsavers.org/pdf/dec/pdp8/pdp8a/EK-8A002-MM-002_PDP-8A_Miniprocessor_Users_Manual_Dec76.pdf)*,
+and the instructions of the DEC FPP-8/A
+(for more details, see Chapter 3 of the
+[*PDP/8-A Minicomputer Handbook*](http://www.bitsavers.org/pdf/dec/pdp8/handbooks/MinicomputerHandbook_1976.pdf)).
+
 This document is much less comprehensive, and will attempt to explain
 as clearly as possible what a PDP-8/X CPU actually appears to do.
 (Of course the implementation may be quite different, provided the
@@ -65,8 +69,8 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
     the AC, any overflow changes the L register from 0 to 1
     or from 1 to 0.
      
-  * The 32-bit PC or program counter points to the next memory location to be
-    executed. Its value is an unsigned integer
+  * The 32-bit PC or program counter points to the next
+    memory location to be executed. Its value is an unsigned integer
     between 0 and however much memory is installed in the system.
      
  * The 32-bit BASE register holds a memory address
@@ -75,8 +79,13 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
  * The 32-bit SBASE register holds a memory address
    of which the low-order 11 bits must be 0.
 
+ * The 32-bit IX0 register, which points to the location in memory
+   which corresponds to index register 0.
+   The other index registers are consecutive words.
+
   The following registers are not visible to programmers and are used
-  in this explanation; they may or may not correspond to actual registers:
+  in this explanation;
+  they may or may not correspond to actual registers:
   
   * The 32-bit IW register holds the instruction word being executed.
       
@@ -95,8 +104,9 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
    * The 4-bit DOP register contains the number of
      a device-specific I/O instruction.
           
-   * The 7-bit SC (shift count) register holds the number of shifts to be
-performed by an extended arithmetic shift instruction.
+   * The 5-bit SC (shift count) register
+     holds the number of shifts to be
+     performed by an extended arithmetic shift instruction.
    
    * The 32-bit H register is set when the machine is built,
      and contains the address of the last existing word in memory.
