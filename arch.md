@@ -224,22 +224,22 @@ Then one of the following six cases is chosen:
    will never be executed.)
    The assembler mnemonic is JMP.
 
- * If FOP is 0x01, then set FAC to FAC + F[FY].
+ * If FOP is 0x01, then set AC to AC + F[Y].
    The assembler mnemonic is FADD.
  
- * If FOP is 0x02, then set FAC to FAC - F[FY].
+ * If FOP is 0x02, then set AC to AC - F[Y].
    The assembler mnemonic is FSUB.
  
- * If FOP is 0x03, then set FAC to FAC / F[FY].
+ * If FOP is 0x03, then set AC to AC / F[Y].
    The assembler mnemonic is FDIV.
  
- * If FOP is 0x04, then set FAC to FAC * F[FY].
+ * If FOP is 0x04, then set AC to AC * F[Y].
    The assembler mnemonic is FMUL.
  
- * If FOP is 0x05, then set F[FY] to FAC + F[FY].
+ * If FOP is 0x05, then set F[Y] to AC + F[Y].
    The assembler mnemonic is FADDM.
   
- * If FOP is 0x07, then set F[Y] to FAC * F[FY].
+ * If FOP is 0x07, then set F[Y] to AC * F[Y].
    The assembler mnemonic is FMULM.
 
 
@@ -357,17 +357,17 @@ Note that *all* applicable actions are taken, not just the first one.
    The assembler mnemonic is HLT.
 
     * If FOPX is 0x1,
-   set FAC to the integer value of FAC.
+   set AC to the integer value of AC.
    The assembler mnemonic is FINT.
  
  * If FOPX is 0x2,
-   set FAC to the integer value of FAC, and then
-   set I[FIDX] to FAC.   
+   set AC to the integer value of AC, and then
+   set I[FIDX] to AC.   
    The assembler mnemonic is ATX.
    
  * If FOPX is 0x3,
-   set FAC to to I[FIDX], and then
-   set FAC to the float value of FAC.
+   set AC to to I[FIDX], and then
+   set AC to the float value of AC.
   The assembler mnemonic is XTA.
  
  * If FOPX is 0x4,
@@ -388,7 +388,7 @@ Note that *all* applicable actions are taken, not just the first one.
    The assembler mnemonic is ADDX.
  
  * If FOPX is 0xA,
-   set FAC to the float value of FAC.
+   set AC to the float value of AC.
    The assembler mnemonic is FFLT.
  
 Otherwise do nothing.
@@ -396,69 +396,69 @@ Otherwise do nothing.
 ## Jump instructions
 
  * If FOPX is 0x0,
-   then if FAC is zero then set FPC to FY;
+   then if AC is zero then set FPC to Y;
    otherwise do nothing.
    The assembler mnemonic is JEQ.
  
  * If FOPX is 0x1,
-   then if FAC is not negative then set FPC to FY;
+   then if AC is not negative then set FPC to Y;
    otherwise do nothing.
    The assembler mnemonic is JGE.
  
  * If FOPX is 0x2,
-   then if FAC is not positive then set FPC to FY;
+   then if AC is not positive then set FPC to Y;
    otherwise do nothing.
    The assembler mnemonic is JLE.
 
  * If FOPX is 0x3,
-   then set FPC to FY.
+   then set FPC to Y.
    The assembler mnemonic is JA.
 
  * If FOPX is 0x4,
-   then if FAC is not zero then set FPC to FY;
+   then if AC is not zero then set FPC to Y;
    otherwise do nothing.
    The assembler mnemonic is JNE.
 
  * If FOPX is 0x5,
-   then if FAC is negative then set FPC to FY;
+   then if AC is negative then set FPC to Y;
    otherwise do nothing.
    The assembler mnemonic is JLT.
 
  * If FOPX is 0x6,
-   then if FAC is positive then set FPC to FY;
+   then if AC is positive then set FPC to Y;
    otherwise do nothing.
   The assembler mnemonic is JGT.
 
- * If FOP is 0x12, then set FPC to FY.
+ * If FOP is 0x12, then set FPC to Y.
    The assembler mnemonic is JXN.
 
  * If FOPX is 0x7,
-   then if FAC is less than -2^32^ or
-   greater than 2^32-1 then set FPC to FY;
+   then if AC is less than -2^32^ or
+   greater than 2^32-1 then set FPC to Y;
    otherwise do nothing.
    The assembler mnemonic is JAL.
 
  * If FOPX is 0xA,
-   set M[FY] to a JA instruction
-   that when executed will jump indirectly via FY + 1,
-   set M[FY+1] to FPC, and set FPC to FY + 2, ignoring overflow.
+   set M[Y] to a JA instruction
+   that when executed will jump indirectly via Y + 1,
+   set M[Y+1] to FPC, and set FPC to Y + 2, ignoring overflow.
    The assembler mnemonic is JSA.
 
  * If FOPX is 0xB,
-   set M[FY] to FPC
-   and then set M[FY+1] to FPC + 1, ignoring overflow.
-   Then set FPC to FY + 1, ignoring overflow.
+   set M[Y] to FPC
+   and then set M[Y+1] to FPC + 1, ignoring overflow.
+   Then set FPC to Y + 1, ignoring overflow.
    If FPC > H, set FPC to 0.
    The assembler mnemonic is JSR.
 
 ## Other instructions
    
  * If FOPX is 0x8,
-   set FX0 to FY.
+   set IX0 to Y.
    The assembler mnemonic is SETX.
 
  * If FOPX is 0x9,
-   set FBASE to FY.
+   set BASE to Y.
    The assembler mnemonic is SETB.
 
 
