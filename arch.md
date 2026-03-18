@@ -84,9 +84,8 @@ by modern standards, and all of them are specialized:
    which corresponds to index register 0.
    The other index registers are consecutive words.
 
-  The following registers are not visible to programmers and are used
-  in this explanation;
-  they may or may not correspond to actual registers:
+The following registers are not visible to programmers and are used
+in this explanation; they may or may not correspond to actual registers:
   
   * The 32-bit IW register holds the instruction word being executed.
       
@@ -186,19 +185,19 @@ the page bits of IW, which are the 0x0300_0000 bits,
 and the 11 least significant bits of the IW, which are the 0x07FF bits.
 
  * If the page bits are 0x0, then set the 21 most significant bits of Y
-   are set to the 21 most significant bits of PC, so that
-   Y represents an address on the current page.
-
- * If the page bits are 0x1, then set the 21 most significant bits of Y
-   are set to the 21 most significant bits of PC, so that
-   Y represents an address on the current page.
-
- * If the page bits are 0x2, then set the 21 most significant bits of Y
    to the 21 most significant bits of PC, so that
    Y represents an address on the current page.
 
+ * If the page bits are 0x1, then set the 21 most significant bits of Y
+   are set to 0, so that
+   Y represents an address on page zero.
+
+ * If the page bits are 0x2, then set the 21 most significant bits of Y
+   to the 21 most significant bits of BASE, so that
+   Y represents an address on the base page.
+
  * If the page bits are 0x3, then set the 21 most significant bits of Y
-   to the 21 most significant bits of SBASE, so that
+   to the 21 most significant bits of STACK, so that
    Y represents an address on the stack page.
 
 The 11 least significant bits of Y are
@@ -233,7 +232,7 @@ Then one of the following instructions is chosen:
    The assembler mnemonic is ISZ (increment and skip if zero).
  
  * If OP is 0x4, then set M[Y] to PC + 1
-   and set PC to Y + 1.
+   and then set PC to Y + 1.
    The assembler mnemonic is JMS (jump to subroutine).
  
  * If OP is 0x5, then set PC to Y.
@@ -266,10 +265,28 @@ Then one of the following instructions is chosen:
    The assembler mnemonic is SETB.
    
  * If OP is 0xF and EOP is 0x2,
-   set IX- to Y.
-   The assembler mnemonic is SETI.
+   set STACK to Y.
+   The assembler mnemonic is SETS.
 
+ * If OP is 0xF and EOP is 0x3,
+   set STACK to STACK + 1, and then set M[STACK] to Y.s
+   The assembler mnemonic is PUSH
+   .
+    * If OP is 0xF and EOP is 0x4,
+   set Y to IX0.
+   The assembler mnemonic is LDX.
 
+ * If OP is 0xF and EOP is 0x5,
+   set Y to BASE.
+   The assembler mnemonic is LDB.
+   
+ * If OP is 0xF and EOP is 0x62,
+   set Y to STACK.
+   The assembler mnemonic is LDS.
+
+ * If OP is 0xF and EOP is 0x7,
+   set Y to M[STACK], and then set STACK to STACK - 1.
+   The assembler mnemonic is POP.
    
 ## I/O instructions
  
