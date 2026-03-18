@@ -78,7 +78,7 @@ by modern standards, and all of them are specialized:
     of which the low-order 11 bits must be 0.
 
  * The 32-bit SBASE register holds a memory address
-   of which the low-order 11 bits must be 1.
+   of which the low-order 11 bits must be 0.
 
  * The 32-bit IX0 register, which points to the location in memory
    which corresponds to index register 0.
@@ -160,7 +160,6 @@ Instructions are fetched, decoded, and executed as follows.
    IX to the 0x00F0_0000 bits of IW, and
    EOP to the 0x000F_0000 bits of IW.
    .
-   
  * Set PC to PC + 1, ignoring any overflow.
    
  * If PC is greater than H, set PC to 0.
@@ -175,7 +174,7 @@ Then repeat from the beginning.
    
 ## Memory-referencing instructions
    
-If the value of OP is anything except 0x06 or 0x07,
+If the value of OP is anything except 0x6, 0x7, 0x8, or 0xF,
 IW contains a memory-referencing instruction (MRI),
 all of which have the same format.
 The Y register is set in a common way for all MRIs,
@@ -183,31 +182,23 @@ and then the value of OP specifies
 exactly what to do with Y, memory locations, and the user-visible registers of the PDP-8/X.
 
 The first step is to determine an initial value of Y using
-the page bits of IW, which are the 0x0300_0800 bits,
+the page bits of IW, which are the 0x0300_0000 bits,
 and the 11 least significant bits of the IW, which are the 0x07FF bits.
 
  * If the page bits are 0x0, then set the 21 most significant bits of Y
    are set to the 21 most significant bits of PC, so that
    Y represents an address on the current page.
 
- * If the page bits are 0x0, then set the 21 most significant bits of Y
+ * If the page bits are 0x1, then set the 21 most significant bits of Y
    are set to the 21 most significant bits of PC, so that
    Y represents an address on the current page.
 
- * If the page bits are 0x0, then set the 21 most significant bits of Y
+ * If the page bits are 0x2, then set the 21 most significant bits of Y
    to the 21 most significant bits of PC, so that
    Y represents an address on the current page.
 
- * If the page bits are 0x1, then set the 21 most significant bits of Y
-   to the 21 most significant bits of SBASE, so that
-   Y represents an address on the base page.
-
- * If the page bits are 0x2, then set the 21 most significant bits of Y
-   are set to 0, so that
-   Y represents an address on page zero.
-
  * If the page bits are 0x3, then set the 21 most significant bits of Y
-   are set to the 21 most significant bits of BASE, so that
+   to the 21 most significant bits of SBASE, so that
    Y represents an address on the stack page.
 
 The 11 least significant bits of Y are
@@ -223,7 +214,7 @@ Any word in memory can be
 accessed indirectly, but only the 8 KW in the four special pages
 can be accessed directly.
 
-Then one of the following cases is chosen:
+Then one of the following instructions is chosen:
 
  * If OP is 0x0, then set AC to AC bitwise-ANDed with M[Y].
    The assembler mnemonic is AND.
@@ -248,23 +239,37 @@ Then one of the following cases is chosen:
  * If OP is 0x5, then set PC to Y.
    The assembler mnemonic is JMP.
 
- * If OP is 0x01, then set AC to AC + M[Y] as floating-point values.
+ * If OP is 0x9, then set AC to AC + M[Y] as floating-point values.
    The assembler mnemonic is FADD.
  
- * If OP is 0x02, then set AC to AC - M[Y] as floating-point values.
+ * If OP is 0xA, then set AC to AC - M[Y] as floating-point values.
    The assembler mnemonic is FSUB.
  
- * If OP is 0x03, then set AC to AC / M[Y] as floating-point values.
+ * If OP is 0xB, then set AC to AC / M[Y] as floating-point values.
    The assembler mnemonic is FDIV.
  
- * If OP is 0x04, then set AC to AC * M[Y] as floating-point values.
+ * If OP is 0xC, then set AC to AC * M[Y] as floating-point values.
    The assembler mnemonic is FMUL.
  
- * If OP is 0x05, then set M[Y] to AC + M[Y] as floating-point values.
+ * If OP is 0xD, then set M[Y] to AC + M[Y] as floating-point values.
    The assembler mnemonic is FADDM.
   
- * If OP is 0x07, then set M[Y] to AC * M[Y] as floating-point values.
+ * If OP is 0xE, then set M[Y] to AC * M[Y] as floating-point values.
    The assembler mnemonic is FMULM.
+
+ * If OP is 0xF and EOP is 0x0,
+   set IX0 to Y.
+   The assembler mnemonic is SETX.
+
+ * If OP is 0xF and EOP is 0x1,
+   set BASE to Y.
+   The assembler mnemonic is SETB.
+   
+ * If OP is 0xF and EOP is 0x2,
+   set IX- to Y.
+   The assembler mnemonic is SETI.
+
+
    
 ## I/O instructions
  
@@ -349,8 +354,8 @@ The assembler mnemonic is NOP.
     
 ## Skip instructions
  
-If OP is 0x7 and the 0x0800 bit of IW is 1
-but the 0x0001 bit of IW is 0,
+If OP is 0x7 and the 0x8 bit of EOP is 1
+but the 0x0000_0001 bit of IW is 0,
 then S is set depending on various bits
 of IW, AC, and L.
 The bits of IW are examined in the order given below.
@@ -374,33 +379,31 @@ Note that *all* applicable actions are taken, not just the first one.
    when combined with this bit are SPA (skip if positive-or-zero AC),
    SNA (skip if non-zero AC), and SZL (skip if zero L) respectively.
   
- * If the 0x0002 bit of IW = 1, then halt the PDP-8/X processor.
+ * If the 0x0002 bit of IW is 1, then halt the PDP-8/X processor.
    When the processor is restarted externally, all registers
    (user-visible and not) and all of memory are unchanged.
    The assembler mnemonic is HLT.
 
+   ## Other operate instructions
+
     * If OP is 0x1,
-   set AC to the integer value of AC.
-   The assembler mnemonic is FINT.
+    set AC to the integer value of AC
+    interpreted as a floating-point value.
+    If AC is positive infinity, set AC to 0x7FFF_FFFF;
+    if AC is negative infinity, set AC to 0x8000_0000;
+    if AC is a NaN, set AC to 0.
+    The assembler mnemonic is FINT.
  
- * If OP is 0x2,
-   set AC to the integer value of AC, and then
-   set I[FIDX] to AC.   
+ * If EOP is 0x2,
+   set M[IX0+IX] to AC.   
    The assembler mnemonic is ATX.
    
- * If OP is 0x3,
-   set AC to to I[FIDX], and then
+ * If EOP is 0x3,
    set AC to the float value of AC.
   The assembler mnemonic is XTA.
  
- * If OP is 0x4,
-   do nothing.
-   The assembler mnemonic is FNOP.
- 
- * If OP is 0x8,
-   set I[FIDX] to M[PC] and
-   then set PC to PC + 1, ignoring overflow.
-   If PC > H, set PC to 0.
+ * If EOP is 0x4,
+   set N[IX0+IX] to M[PC] and
    The assembler mnemonic is LDX.
  
  * If OP is 0x9,
@@ -415,75 +418,6 @@ Note that *all* applicable actions are taken, not just the first one.
    The assembler mnemonic is FFLT.
  
 Otherwise do nothing.
-
-## Jump instructions
-
- * If OP is 0x0,
-   then if AC is zero then set PC to Y;
-   otherwise do nothing.
-   The assembler mnemonic is JEQ.
- 
- * If OP is 0x1,
-   then if AC is not negative then set PC to Y;
-   otherwise do nothing.
-   The assembler mnemonic is JGE.
- 
- * If OP is 0x2,
-   then if AC is not positive then set PC to Y;
-   otherwise do nothing.
-   The assembler mnemonic is JLE.
-
- * If OP is 0x3,
-   then set PC to Y.
-   The assembler mnemonic is JA.
-
- * If OP is 0x4,
-   then if AC is not zero then set PC to Y;
-   otherwise do nothing.
-   The assembler mnemonic is JNE.
-
- * If OP is 0x5,
-   then if AC is negative then set PC to Y;
-   otherwise do nothing.
-   The assembler mnemonic is JLT.
-
- * If OP is 0x6,
-   then if AC is positive then set PC to Y;
-   otherwise do nothing.
-  The assembler mnemonic is JGT.
-
- * If OP is 0x12, then set PC to Y.
-   The assembler mnemonic is JXN.
-
- * If OP is 0x7,
-   then if AC is less than -2^32^ or
-   greater than 2^32-1 then set PC to Y;
-   otherwise do nothing.
-   The assembler mnemonic is JAL.
-
- * If OP is 0xA,
-   set M[Y] to a JA instruction
-   that when executed will jump indirectly via Y + 1,
-   set M[Y+1] to PC, and set PC to Y + 2, ignoring overflow.
-   The assembler mnemonic is JSA.
-
- * If OP is 0xB,
-   set M[Y] to PC
-   and then set M[Y+1] to PC + 1, ignoring overflow.
-   Then set PC to Y + 1, ignoring overflow.
-   If PC > H, set PC to 0.
-   The assembler mnemonic is JSR.
-
-## Other instructions
-   
- * If OP is 0x8,
-   set IX0 to Y.
-   The assembler mnemonic is SETX.
-
- * If OP is 0x9,
-   set BASE to Y.
-   The assembler mnemonic is SETB.
-
 
 ## AC and MQ instructions
 
@@ -506,8 +440,7 @@ Note that *all* applicable actions are taken, not just the first one.
 ## Extended arithmetic instructions
 
 When an AC and MQ instruction is complete,
-the EOP register is set to the 0x00F0 bits of IW
-and one of the following operations is executed:
+one of the following operations is executed:
 
  * If EOP is 0x0, no action is taken.
 
@@ -595,8 +528,6 @@ and one of the following operations is executed:
  * If EOP is 0xA, set M[Y] to AC and M[Y+1] to MQ.
    The assembler mnemonic is DST (Double Store).
    
- * If EOP is 0xB, take no action.
-   
  * If EOP is 0xC, set MQ to the sum of MQ and 1.
    Then set AC to the sum of AC and the carry from MQ.
    Set L to the carry from AC.
@@ -615,24 +546,14 @@ and one of the following operations is executed:
    Otherwise, set L to 0.
    The assembler mnemonic is SAM (Subtract AC from MQ).
 
+## Other instructions
+   
+
 ## Ideas
 
 MQ operates and skips
 ```
-muurkha> did I already suggest having a couple of extra page selector registers and an extra page selection bit in the instruction word?
-4:21 PM <muurkha> you could use one page selection register for a stack and another for a self pointer
-4:25 PM <muurkha> I mean, not as a mandatory thing, just that some programs might choose to use them that way
-4:26 PM <muurkha> the idea is that instead of a single zero-page/pc-page selection bit, you have a two-bit field where maybe 00 is zero-page, 01 is pc-page, 10 is ss, and 11 is rs
-4:26 PM <muurkha> and instructions to load and store ss and rs
-4:27 PM <muurkha> I feel like the indirection bit kind of makes PDP-8 halfway CISC already
-4:36 PM <jcowan> there's really no alternative to the indirect bit
-4:36 PM <jcowan> let me see if I understand this
-4:38 PM <jcowan> okay, now we have 18 bits [no, 17 bits]
-4:39 PM <jcowan> The 0xB instruction in the EAE range is still free
 4:40 PM <jcowan> I note that SAM says it manipulate the Greater Than Flag, so I have to add that (and maybe use 0B in the EAE range, which currently is undefined, to get/set it
-4:43 PM <jcowan> The X86 segment registers number four because Pascal has four memory spaces code, globals, stack, heap and you statically know for nay pointer which one it is.
-4:43 PM <jcowan> s/nay/any
-4:46 PM <jcowan> so maybe we leave the indirect bit alone and add 2 more bits for these spaces
 ```
 
 PDP-11 instructions:
@@ -642,7 +563,3 @@ PDP-11 instructions:
  * xor, bit set, bit clear
  * decrement and skip if zero
  * JSR, RTS
-
-FPP-8/A instructions:
- * FLDA, FADD, FSUB, FMUL, FDIV, FADDM, FMULM, FSTA
- * FINT, FFLT
