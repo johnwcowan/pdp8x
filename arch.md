@@ -58,7 +58,8 @@ We can use similar bit masks to talk about multiple bits at the same time.
 
 ## Registers
 
-The user-visible registers of a PDP-8/X are very few by modern standards:
+The user-visible registers of a PDP-8/X are very few
+by modern standards, and all of them are specialized:
 
  * The 32-bit AC or accumulator register, used
    by almost all instructions.
@@ -89,12 +90,19 @@ The user-visible registers of a PDP-8/X are very few by modern standards:
   
   * The 32-bit IW register holds the instruction word being executed.
       
-  * The 5-bit OP register contains the 0x7D_0000 bits of IR.
+  * The 4-bit OP register, which contains the instruction opcode.
+
+  * The 4-bit IX register, which contains the number of the index register
+    used by the instruction, if any.
+
+  * The 4-bit EOP register, which contains the extended opcode
+    of the instruction, if any.
   
   * The 1-bit S register is 1 if the next instruction is going to be skipped
     (not executed) and 0 otherwise.
 
-  * The -bit SP register 
+  * The 11-bit SP register, which specifies the current stack
+    pointer relative to SBASE. 
     
   * The 32-bit Y register contains the address of the memory location 
     being accessed by the current instruction (if any).
@@ -120,11 +128,14 @@ It is organized into *pages* that are 2 KW in length.
 This use of the term *page* has nothing to do
 with virtual memory.
 
-The page whose addresses are #x0000_0000 to #x0000_07FF inclusive is called *page zero*.
+The page whose addresses are #x0000_0000 to #x0000_07FF inclusive is
+called *page zero*.
 The page that contains the instruction currently being executed is
 called the *current page*.
-The page whose lowest address is the BASE register is called the *base page*.
-Finally, the page whose highest address is in the SBASE register is called the *stack page*.
+The page whose lowest address is the BASE register is
+called the *base page*.
+Finally, the page whose lowest address is in the SBASE register ia
+called the *stack page*.
 These are the only pages that are directly addressable.
    
 The maximum amount of memory is 512K pages, 1 GW; in a fully equipped
@@ -145,7 +156,10 @@ Instructions are fetched, decoded, and executed as follows.
 
  * Start by setting IW to M[PC].
 
- * Set OP to the 0x bits of IR.
+ * Set OP to the 0xF000_0000 bits of IW,
+   IX to the 0x00F0_0000 bits of IW, and
+   EOP to the 0x000F_0000 bits of IW.
+   .
    
  * Set PC to PC + 1, ignoring any overflow.
    
@@ -159,41 +173,57 @@ Instructions are fetched, decoded, and executed as follows.
 
 Then repeat from the beginning.
    
-## Immediate value instruction
-
-If the 0x8000_0000 bit of IR is 1, set the 0x8000_0000 bit of
-IW to the 0x4000_0000 bit of IR.  Then set AC to IR.
-The assembler mnemonic is IMM.
-
 ## Memory-referencing instructions
    
 If the value of OP is anything except 0x06 or 0x07,
-IR contains a memory-referencing instruction (MRI), all of which have the same format.
-The Y register is set in a common way for all MRIs, and then the value of OP specifies
+IW contains a memory-referencing instruction (MRI),
+all of which have the same format.
+The Y register is set in a common way for all MRIs,
+and then the value of OP specifies
 exactly what to do with Y, memory locations, and the user-visible registers of the PDP-8/X.
 
-The first step is to determine an initial value of Y using the page bits of IR, which is
-the 0x0800 bit, and the 11 least significant bits of the IR, which are the 0x07FF bits.
-If the page bit is 0, then the 21 most significant bits of Y are set to 0, so that
-Y represents an address on page zero.  If the page bit is 1, Y will represent an address
-on the current page, and no special action needs to be taken.
+The first step is to determine an initial value of Y using
+the page bits of IW, which are the 0x0300_0800 bits,
+and the 11 least significant bits of the IW, which are the 0x07FF bits.
 
-The 11 least significant bits of IR are
-copied to the 11 least significant bits of Y.
+ * If the page bits are 0x0, then set the 21 most significant bits of Y
+   are set to the 21 most significant bits of PC, so that
+   Y represents an address on the current page.
 
-If the indirect bit (that is, the 0x1000 bit) of IR is 1,
-if Y is in the range 0000_0200 to 0000_02FF inclusive,
-set M[Y] to M[Y] + 1.  In any case set Y to M[Y].
-This is called *indirect addressing*.
+ * If the page bits are 0x0, then set the 21 most significant bits of Y
+   are set to the 21 most significant bits of PC, so that
+   Y represents an address on the current page.
 
+ * If the page bits are 0x0, then set the 21 most significant bits of Y
+   to the 21 most significant bits of PC, so that
+   Y represents an address on the current page.
+
+ * If the page bits are 0x1, then set the 21 most significant bits of Y
+   to the 21 most significant bits of SBASE, so that
+   Y represents an address on the base page.
+
+ * If the page bits are 0x2, then set the 21 most significant bits of Y
+   are set to 0, so that
+   Y represents an address on page zero.
+
+ * If the page bits are 0x3, then set the 21 most significant bits of Y
+   are set to the 21 most significant bits of BASE, so that
+   Y represents an address on the stack page.
+
+The 11 least significant bits of Y are
+set to the 11 least significant bits of IW.
+Then if the increment bit (tha is, 0x0400_0000) of IW is 1,
+then set M[IX0+IX] to M[IX0+IX] + 1.
+
+If the indirect bit (that is, the 0x0800_0000 bit) of IW is 1,
+set Y to M[Y]. This is called *indirect addressing*.
 If the indirect bit is 0, nothing is done.
 This is called *direct addressing*
-
 Any word in memory can be
 accessed indirectly, but only the 8 KW in the four special pages
 can be accessed directly.
 
-Then one of the following six cases is chosen:
+Then one of the following cases is chosen:
 
  * If OP is 0x0, then set AC to AC bitwise-ANDed with M[Y].
    The assembler mnemonic is AND.
@@ -213,36 +243,28 @@ Then one of the following six cases is chosen:
  
  * If OP is 0x4, then set M[Y] to PC + 1
    and set PC to Y + 1.
-   (Note that if this instruction is in the least significant bits
-   of a memory location,
-   the instruction in the most significant bits will never be executed.)
    The assembler mnemonic is JMS (jump to subroutine).
  
  * If OP is 0x5, then set PC to Y.
-   (Note that if this instruction is in the least significant bits,
-   the instruction in the most significant bits of a memory location
-   will never be executed.)
    The assembler mnemonic is JMP.
 
- * If OP is 0x01, then set AC to AC + M[Y].
+ * If OP is 0x01, then set AC to AC + M[Y] as floating-point values.
    The assembler mnemonic is FADD.
  
- * If OP is 0x02, then set AC to AC - M[Y].
+ * If OP is 0x02, then set AC to AC - M[Y] as floating-point values.
    The assembler mnemonic is FSUB.
  
- * If OP is 0x03, then set AC to AC / M[Y].
+ * If OP is 0x03, then set AC to AC / M[Y] as floating-point values.
    The assembler mnemonic is FDIV.
  
- * If OP is 0x04, then set AC to AC * M[Y].
+ * If OP is 0x04, then set AC to AC * M[Y] as floating-point values.
    The assembler mnemonic is FMUL.
  
- * If OP is 0x05, then set M[Y] to AC + M[Y].
+ * If OP is 0x05, then set M[Y] to AC + M[Y] as floating-point values.
    The assembler mnemonic is FADDM.
   
- * If OP is 0x07, then set M[Y] to AC * M[Y].
+ * If OP is 0x07, then set M[Y] to AC * M[Y] as floating-point values.
    The assembler mnemonic is FMULM.
-
-
    
 ## I/O instructions
  
@@ -256,9 +278,9 @@ DOP to an undefined instruction, then no action is taken.
  
 ## Operate instructions
  
-If OP is 0x7 and the 0x0800 bit is 0,
+If OP is 0x7 and the 0x8 bit of EOP is 0,
 then various operations on AC, L, and/or MQ are
-performed depending on the bits of IR,
+performed depending on the bits of IW,
 which are examined in the order given below.
 Note that all applicable actions are taken, not just the first one.
  
@@ -266,42 +288,42 @@ For convenience, the 0x0010 bit is called the RR (rotate right) bit,
 the 0x0004 bit is called the RL (rotate left) bit, 
 and the 0x0002 bit is called the RT (rotate twice) bit.
 
- * If the 0x0200 bit of IR is 1, then set AC to 0.
+ * If the 0x0200 bit of IW is 1, then set AC to 0.
    The assembler mnemonic is CLA (clear AC).
   
- * If the 0x0100 bit of IR is 1, then set L to 0.
+ * If the 0x0100 bit of IW is 1, then set L to 0.
    The assembler mnemonic is CLL (clear link).
 
- * If the 0x0040 bit of IR is 1, then set AC to the bitwise-NOT of AC,
+ * If the 0x0040 bit of IW is 1, then set AC to the bitwise-NOT of AC,
    or equivalently to (-A) - 1.
    The assembler mnemonic is CMA (complement AC).
    
- * If the 0x0020 bit of IR is 1, then set L to 1 - L.
+ * If the 0x0020 bit of IW is 1, then set L to 1 - L.
    The assembler mnemonic is CML (clear link).
  
- * If the 0x0001 bit of IR is 1, then set AC to AC + 1.
+ * If the 0x0001 bit of IW is 1, then set AC to AC + 1.
    If there is an overflow out of AC as a result, set L to 1 - L.
    The assembler mnemonic is IAC (increment AC).
  
- * If the RR bit of IR is 1 and the RL and RT bits of IR are 0,
+ * If the RR bit of IW is 1 and the RL and RT bits of IW are 0,
    then jointly rotate AC and L right by one bit.
    That is, set B to the lowest order bit of AC, shift AC right by one bit,
    set the most significant bit of AC to L
    and set L to B.
    The assembler mnemonic is RAR (rotate AC right).
    
- * If the RR and RT bits of IR are 1 and the RL bit of IR is 0,
+ * If the RR and RT bits of IW are 1 and the RL bit of IW is 0,
    then jointly rotate AC and L right by two bits.
    This can be done by rotating right by one bit twice or more efficiently.
    The assembler mnemonic is RTR (rotate twice right).
    
- * If the RL bit of IR is 1 and the RR and RT bits of IR are 0,
+ * If the RL bit of IW is 1 and the RR and RT bits of IW are 0,
    then jointly rotate AC and L right by one bit.
    That is, set B to L, shift AC left by one bit,
    and set the least significant bit of AC to L.
    The assembler mnemonic is RAL (rotate AC left).
    
- * If the RL and RT bits of IR are 1 and then RR bit of IR is 0,
+ * If the RL and RT bits of IW are 1 and then RR bit of IW is 0,
    then jointly rotate AC and L left by two bits.
    This can be done by rotating left by one bit twice or more efficiently.
    The assembler mnemonic is RTL (rotate twice left).
@@ -309,7 +331,8 @@ and the 0x0002 bit is called the RT (rotate twice) bit.
  * If the RL and RR bits are 0 and the RT bit is 1, then exchange the
    16 most significant bits of AC with the 16
    16 least significant bits  of AC.
-   The assembler mnemonic is HSW (halfword swap); there is no PDP-8 equivalent.
+   The assembler mnemonic is HSW (halfword swap);
+   there is no PDP-8 equivalent.
    
  * If the RL, RR, and RT bits are all 1, then set AC to PC.
    The assembler mnemonic is PCA (PC to AC); this is a PDP/8-A-only
@@ -326,32 +349,32 @@ The assembler mnemonic is NOP.
     
 ## Skip instructions
  
-If OP is 0x7 and the 0x0800 bit of IR is 1
-but the 0x0001 bit of IR is 0,
+If OP is 0x7 and the 0x0800 bit of IW is 1
+but the 0x0001 bit of IW is 0,
 then S is set depending on various bits
-of IR, AC, and L.
-The bits of IR are examined in the order given below.
+of IW, AC, and L.
+The bits of IW are examined in the order given below.
 Note that *all* applicable actions are taken, not just the first one.
 
- * If the 0x0200 bit of IR is 1, then set AC to 0.
+ * If the 0x0200 bit of IW is 1, then set AC to 0.
    There is no assembler mnemonic.
  
- * If the 0x0100 bit of IR = 1 and the sign (0x80000000) bit of AC = 1,
+ * If the 0x0100 bit of IW = 1 and the sign (0x80000000) bit of AC = 1,
    (that is, AC is negative), then set S to 1.
    The assembler mnemonic is SMA (skip if minus AC).
   
- * If the 0x0040 bit of IR = 1 and AC = 0, then set S to 1.
+ * If the 0x0040 bit of IW = 1 and AC = 0, then set S to 1.
     The assembler mnemonic is SZA (skip if zero AC).
  
- * If the 0x0020 bit of IR = 1 and L = 1, then set S to 1.
+ * If the 0x0020 bit of IW = 1 and L = 1, then set S to 1.
    The assembler mnemonic is SNL (skip if non-zero L).
  
- * If the 0x0010 bit of IR = 1, then set S to 1 - S.
+ * If the 0x0010 bit of IW = 1, then set S to 1 - S.
    The assembler mnemonics for the previous three instructions
    when combined with this bit are SPA (skip if positive-or-zero AC),
    SNA (skip if non-zero AC), and SZL (skip if zero L) respectively.
   
- * If the 0x0002 bit of IR = 1, then halt the PDP-8/X processor.
+ * If the 0x0002 bit of IW = 1, then halt the PDP-8/X processor.
    When the processor is restarted externally, all registers
    (user-visible and not) and all of memory are unchanged.
    The assembler mnemonic is HLT.
@@ -464,8 +487,8 @@ Otherwise do nothing.
 
 ## AC and MQ instructions
 
-If OP is 0x7 and the 0x0800 bit and the 0x0001 bit of IR are both 1,
-then the bits of IR are examined in the order given below.
+If OP is 0x7 and the 0x0800 bit and the 0x0001 bit of IW are both 1,
+then the bits of IW are examined in the order given below.
 Note that *all* applicable actions are taken, not just the first one.
 
  * If the 0x0200 bit is 1, then set AC to 0.
@@ -483,7 +506,7 @@ Note that *all* applicable actions are taken, not just the first one.
 ## Extended arithmetic instructions
 
 When an AC and MQ instruction is complete,
-the EOP register is set to the 0x00F0 bits of IR
+the EOP register is set to the 0x00F0 bits of IW
 and one of the following operations is executed:
 
  * If EOP is 0x0, no action is taken.
@@ -494,14 +517,14 @@ and one of the following operations is executed:
    (Note that some DEC documentation claims the mnemonic
    is the meaningless ACS.)
  * If EOP is 0x2, set Y to M[PC] and PC to PC + 1.
-   If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
+   If the 0x1000 (indirect) bit of IW is 1, set Y to M[Y].
    The sum of AC and the 64-bit unsigned product of Y and MQ is computed.
    Set AC to the 32 high-order bits of the product,
    and MQ to the 32-low-order bits.  Set L and SC to 0.
    The assembler mnemonic is MUY (Multiply).
      
  * If EOP is 0x3, set Y to M[PC] and PC to PC + 1.
-   If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
+   If the 0x1000 (indirect) bit of IW is 1, set Y to M[Y].
    The 64-bit unsigned number whose 32 high-order bits are
    in the AC and whose 32 low-order bits are in the MQ is
    divided by Y.  Set MQ to the quotient and AC to the remainder.
@@ -563,7 +586,7 @@ and one of the following operations is executed:
    The assembler mnemonic is SCA (Step Counter to AC).
    
  * If EOP is 0x9, set Y to M[PC] and PC to PC + 1.
-   If the 0x1000 (indirect) bit of IR is 1, set Y to M[Y].
+   If the 0x1000 (indirect) bit of IW is 1, set Y to M[Y].
    Then set MQ to the sum of MQ and M[Y+1], and set AC
    to the sum of AC, M[Y], and the carry from MQ.
    Set L to the carry from AC.
