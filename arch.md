@@ -77,12 +77,14 @@ by modern standards, and all of them are specialized:
  * The 32-bit BASE register holds a memory address
     of which the low-order 11 bits must be 0.
 
- * The 32-bit SBASE register holds a memory address
+ * The 32-bit STACK register holds a memory address
    of which the low-order 11 bits must be 0.
 
- * The 32-bit IX0 register, which points to the location in memory
+ * The 32-bit IX0 register points to the location in memory
    which corresponds to index register 0.
    The other index registers are consecutive words.
+   
+  * The 1-bit GTF (Greater Than Flag).
 
 The following registers are not visible to programmers and are used
 in this explanation; they may or may not correspond to actual registers:
@@ -101,7 +103,7 @@ in this explanation; they may or may not correspond to actual registers:
     (not executed) and 0 otherwise.
 
   * The 11-bit SP register, which specifies the current stack
-    pointer relative to SBASE. 
+    pointer relative to STACK. 
     
   * The 32-bit Y register contains the address of the memory location 
     being accessed by the current instruction (if any).
@@ -133,7 +135,7 @@ The page that contains the instruction currently being executed is
 called the *current page*.
 The page whose lowest address is the BASE register is
 called the *base page*.
-Finally, the page whose lowest address is in the SBASE register ia
+Finally, the page whose lowest address is in the STACK register ia
 called the *stack page*.
 These are the only pages that are directly addressable.
    
