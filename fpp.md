@@ -1,3 +1,5 @@
+**This document is no longer part of the PDP/8-X architecture. The instructions documented here have been merged into the [architecture document](arch.md) for the CPU.**
+
 # The FPP-8/X architecture
 
 The FPP-8/X is a rethink of the DEC FPP-8/A
