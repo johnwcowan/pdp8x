@@ -1,5 +1,3 @@
-**Note: The architecture is being redesigned to use 32-bit instructions.  This paragraph will be removed when everything has been updated.**
-
 # The PDP-8/X architecture
 
 The PDP-8/X is a rethink of the DEC PDP-8, a 12-bit minicomputer.
@@ -80,6 +78,9 @@ by modern standards, and all of them are specialized:
  * The 32-bit STACK register holds a memory address
    of which the low-order 11 bits must be 0.
 
+  * The 11-bit SP register, which specifies the current stack
+    pointer relative to STACK. 
+    
  * The 32-bit IX0 register points to the location in memory
    which corresponds to index register 0.
    The other index registers are consecutive words.
@@ -102,9 +103,6 @@ in this explanation; they may or may not correspond to actual registers:
   * The 1-bit S register is 1 if the next instruction is going to be skipped
     (not executed) and 0 otherwise.
 
-  * The 11-bit SP register, which specifies the current stack
-    pointer relative to STACK. 
-    
   * The 32-bit Y register contains the address of the memory location 
     being accessed by the current instruction (if any).
      
@@ -172,6 +170,10 @@ Instructions are fetched, decoded, and executed as follows.
  * Set S to 0.
 
 Then repeat from the beginning.
+
+If a possible instruction is not documented here,
+it is available for extension.
+If there is no such extension, it is a NOP.
    
 ## Memory-referencing instructions
    
@@ -271,10 +273,10 @@ Then one of the following instructions is chosen:
    The assembler mnemonic is SETS.
 
  * If OP is 0xF and EOP is 0x3,
-   set STACK to STACK + 1, and then set M[STACK] to Y.s
+   set STACK to STACK + 1, and then set M[STACK] to Y.
    The assembler mnemonic is PUSH
-   .
-    * If OP is 0xF and EOP is 0x4,
+
+ * If OP is 0xF and EOP is 0x4,
    set Y to IX0.
    The assembler mnemonic is LDX.
 
@@ -282,14 +284,32 @@ Then one of the following instructions is chosen:
    set Y to BASE.
    The assembler mnemonic is LDB.
    
- * If OP is 0xF and EOP is 0x62,
+ * If OP is 0xF and EOP is 0x6,
    set Y to STACK.
    The assembler mnemonic is LDS.
-
- * If OP is 0xF and EOP is 0x7,
-   set Y to M[STACK], and then set STACK to STACK - 1.
-   The assembler mnemonic is POP.
    
+ * If OP is 0xF and EOP is 0x7,
+   set Y to M[STACK] and then STACK to STACK - 1 
+   The assembler mnemonic is POP.
+
+ * If OP is 0xF and EOP is 0x8,
+   set SP to the lowest 11 bits of AC.
+   The assembler mnemonic is SETSP.
+
+ * If OP is 0xF and EOP is 0x8,
+   set AC to 0, and then
+   set the lowest 11 bits of AC to SP.
+   The assembler mnemonic is LDSP.
+
+  * If OP is 0xF and EOP is 0xB,
+   set STACK to STACK + 1, and then set M[STACK] to PC,
+   and then set PC to Y.
+   The assembler mnemonic is PUSHJ
+
+ * If OP is 0xF and EOP is 0xF,
+   set PC to M[STACK] and then STACK to STACK - 1 
+   The assembler mnemonic is POPJ.
+
 ## I/O instructions
  
 If OP is 0x6, then set D to the 0x0FF0 bits of IW
@@ -383,17 +403,17 @@ Note that *all* applicable actions are taken, not just the first one.
  * If the 0x0200 bit of IW is 1, then set AC to 0.
    There is no assembler mnemonic.
  
- * If the 0x0100 bit of IW = 1 and the sign (0x80000000) bit of AC = 1,
+ * If the 0x0100 bit of IW is 1 and the sign (0x80000000) bit of AC is 1,
    (that is, AC is negative), then set S to 1.
    The assembler mnemonic is SMA (skip if minus AC).
   
- * If the 0x0040 bit of IW = 1 and AC = 0, then set S to 1.
+ * If the 0x0040 bit of IW is 1 and AC is 0, then set S to 1.
     The assembler mnemonic is SZA (skip if zero AC).
  
- * If the 0x0020 bit of IW = 1 and L = 1, then set S to 1.
+ * If the 0x0020 bit of IW is 1 and L is 1, then set S to 1.
    The assembler mnemonic is SNL (skip if non-zero L).
  
- * If the 0x0010 bit of IW = 1, then set S to 1 - S.
+ * If the 0x0010 bit of IW is 1, then set S to 1 - S.
    The assembler mnemonics for the previous three instructions
    when combined with this bit are SPA (skip if positive-or-zero AC),
    SNA (skip if non-zero AC), and SZL (skip if zero L) respectively.
@@ -466,8 +486,7 @@ one of the following operations is executed:
  * If EOP is 0x1, set SC is the 11 low-order bits of AC,
    and set AC to 0.
    The assembler mnemonic is ASC (AC to SC).
-   (Note that some DEC documentation claims the mnemonic
-   is the meaningless ACS.)
+   (Note that some DEC documentation claims the mnemonic is ACS.)
  * If EOP is 0x2, set Y to M[PC] and PC to PC + 1.
    If the 0x1000 (indirect) bit of IW is 1, set Y to M[Y].
    The sum of AC and the 64-bit unsigned product of Y and MQ is computed.
@@ -525,6 +544,7 @@ one of the following operations is executed:
    the 32 low-order bits.  To shift:
    
    * set L to 0
+   * set GTF to the low-order bit of MQ
    * shift the bits of MQ right
    * set the 0x8000_0000 bit of MQ to the 0x0000_0001 bit of AC
    * shift the bits of AC right
@@ -561,19 +581,16 @@ one of the following operations is executed:
    The assembler mnemonic is DCM (Double Complement).
   
  * If EOP is 0xF, set AC to MQ - AC.  Set L to 1 if
-   a borrow is propagated from the most significant bit of AC.
-   Otherwise, set L to 0.
+   a borrow is propagated from the most significant bit of AC;
+   otherwise, set L to 0.
+   Set GTF to 1 if the signed number in the MQ is greater
+   than or equal to the original signed number;
+   otherwise set GTF to 0.
    The assembler mnemonic is SAM (Subtract AC from MQ).
-
-## Other instructions
-   
 
 ## Ideas
 
 MQ operates and skips
-```
-4:40 PM <jcowan> I note that SAM says it manipulate the Greater Than Flag, so I have to add that (and maybe use 0B in the EAE range, which currently is undefined, to get/set it
-```
 
 PDP-11 instructions:
  * decrement AC
