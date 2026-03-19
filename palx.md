@@ -7,7 +7,7 @@ except inside a comment.
 ```
 [label,] expr* [/comment]
 [label,] nonmri [/comment]
-[label,] mri [I] [Z] addr [/comment]
+[label,] mri [I] [Z|B|S] addr [/comment]
 [label,] pseudo-op [/comment]
 ```
 
@@ -50,15 +50,16 @@ Everything else is an error.
 *addr - set assembly address (absolute or relocatable)
 name = expr - define name
 asect [name] - start assembling a new absolute section
-base addr - set the assembler's idea of the FPP base page
+base addr - set the assembler's idea of the base page
 block n [k] - assemble a block of n words filled with k (default 0)
 common [name] - start assembling a new common section
+commb [name] - start assembling a new common section in the base page
 commz [name] - start assembling a new common section in page zero
 cpage n - ensure the next n words are on the current page
-eap - enter auto-paging (CPU code can cross pages)
+eap - enter auto-paging mode (code can cross pages)
 extern name - name is external (may be defined or undefined)
-index addr - set the assembler's idea of the FPP index register block
-lap - leave auto-paging (CPU code cannot cross pages)
+index addr - set the assembler's idea of the index register block
+lap - leave auto-paging (code cannot cross pages)
 page [n] - start assembling at the beginning of page n, or next page
 reloc addr - assemble in current location as if at addr
 sect [name] - start assembling a new relocatable section with CPU code
@@ -71,14 +72,6 @@ word - assemble 0x0000 if high half, nothing if low half
 ## Notes
 INC is equivalent to ISZ, but the programmer guarantees it won't skip.
 
-MRI instructions:
-
-* AND, TAD, ISZ, DCA, JMS, JMP
-* MUY, DVI, NMI, DAD. DST (do not use Z)
-* FLDA, FADD, FSUB, FDIV, FMUL, FADDM, FSTA, FMULM
-* JEQ, JGE, JLE, JA, JNE, JLT, JGT, JAL
-* SETX, SETB, JSA, JSR, JXN
-* TRAP3, TRAP4, TRAP5, TRAP6, TRAP7
 
 ## Page zero subroutine for off-page indirection in EAP mode
 
