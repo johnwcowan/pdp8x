@@ -1,4 +1,4 @@
-# The PDP-8/X architecture
+ppppl# The PDP-8/X architecture
 
 The PDP-8/X is a rethink of the DEC PDP-8, a 12-bit minicomputer.
 Because the PDP-8 is word-oriented, it almost doesn't matter
@@ -296,7 +296,7 @@ Then one of the following instructions is chosen:
    set SP to the lowest 11 bits of AC.
    The assembler mnemonic is SETSP.
 
- * If OP is 0xF and EOP is 0x8,
+ * If OP is 0xF and EOP is 0x9,
    set AC to 0, and then
    set the lowest 11 bits of AC to SP.
    The assembler mnemonic is LDSP.
